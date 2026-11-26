@@ -1,0 +1,2399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>疯狂水世界 控制台</title>
+<style>
+  :root {
+    --bg: #020617;
+    --card: #0E1223;
+    --card-2: #131a2e;
+    --border: #253048;
+    --border-soft: #1b2438;
+    --fg: #F8FAFC;
+    --muted: #94A3B8;
+    --dim: #64748B;
+    --accent: #16A34A;
+    --accent-soft: rgba(22, 163, 74, .14);
+    --amber: #F59E0B;
+    --amber-soft: rgba(245, 158, 11, .14);
+    --slate: #64748B;
+    --danger: #DC2626;
+    --danger-soft: rgba(220, 38, 38, .14);
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; }
+
+  /* 让 hidden 属性对 inline-flex 等元素也生效 */
+  [hidden] { display: none !important; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(900px 420px at 12% -8%, rgba(22, 163, 74, .10), transparent 70%),
+      radial-gradient(700px 380px at 92% 0%, rgba(56, 189, 248, .07), transparent 70%);
+    z-index: 0;
+  }
+
+  .mono {
+    font-family: "Cascadia Code", "Fira Code", Consolas, "SF Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 22px 20px 60px;
+  }
+
+  /* ---------- 顶栏 ---------- */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-soft);
+    margin-bottom: 20px;
+  }
+
+  .logo {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(150deg, var(--accent), #0d7a37);
+    display: grid; place-items: center;
+    flex: 0 0 auto;
+  }
+  .logo svg { width: 21px; height: 21px; }
+
+  .titles { margin-right: auto; }
+  .titles h1 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: .2px;
+  }
+  .titles p {
+    margin: 2px 0 0;
+    font-size: 12.5px;
+    color: var(--dim);
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    font-size: 12.5px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--dim);
+    flex: 0 0 auto;
+  }
+  .dot.live { background: var(--accent); box-shadow: 0 0 0 3px rgba(22,163,74,.18); }
+  .dot.busy { background: var(--amber); box-shadow: 0 0 0 3px rgba(245,158,11,.18); animation: pulse 1.2s ease-in-out infinite; }
+  .dot.off  { background: var(--dim); }
+
+  @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+
+  /* ---------- 统计条 ---------- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+  }
+  .stat .k {
+    font-size: 11.5px;
+    color: var(--dim);
+    letter-spacing: .4px;
+    text-transform: uppercase;
+  }
+  .stat .v {
+    font-size: 21px;
+    font-weight: 600;
+    margin-top: 3px;
+    letter-spacing: -.3px;
+  }
+  .stat .v small { font-size: 12px; color: var(--dim); font-weight: 400; margin-left: 3px; }
+
+  /* ---------- 卡片通用 ---------- */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+  }
+
+  .sec-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 10px;
+    font-size: 12px;
+    color: var(--dim);
+    letter-spacing: .5px;
+    text-transform: uppercase;
+  }
+  .sec-head .line {
+    flex: 1;
+    height: 1px;
+    background: var(--border-soft);
+  }
+
+  /* ---------- 农田网格 ---------- */
+  .farms {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(238px, 1fr));
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+
+  .farm {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 13px 14px;
+    background: var(--card);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    transition: border-color .18s ease, background .18s ease;
+  }
+  .farm.is-ready {
+    border-color: rgba(22,163,74,.45);
+    background: linear-gradient(180deg, var(--accent-soft), transparent 65%), var(--card);
+  }
+  .farm.is-empty { border-style: dashed; border-color: var(--border); }
+
+  .ring { position: relative; flex: 0 0 auto; width: 52px; height: 52px; }
+  .ring svg { transform: rotate(-90deg); display: block; }
+  .ring .trk { stroke: var(--border); }
+  .ring .val { stroke: var(--amber); transition: stroke-dashoffset .5s linear, stroke .3s ease; }
+  .farm.is-ready .ring .val { stroke: var(--accent); }
+  .farm.is-empty .ring .val { stroke: transparent; }
+  .ring .pct {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    font-size: 11.5px; font-weight: 600; color: var(--muted);
+  }
+
+  .farm-body { min-width: 0; flex: 1; }
+  .farm-top {
+    display: flex; align-items: center; gap: 7px;
+    margin-bottom: 2px;
+  }
+  .farm-name { font-size: 14px; font-weight: 600; letter-spacing: .2px; }
+  .badge {
+    font-size: 10.5px;
+    padding: 1px 6px;
+    border-radius: 5px;
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .farm-time {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -.2px;
+    color: var(--fg);
+  }
+  .farm.is-ready .farm-time { color: var(--accent); }
+  .farm.is-empty .farm-time { color: var(--slate); font-size: 14px; font-weight: 500; }
+  .farm-sub { font-size: 11.5px; color: var(--dim); margin-top: 1px; }
+
+  /* ---------- 控制面板 ---------- */
+  .panel {
+    padding: 16px;
+    margin-bottom: 22px;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .row:last-child { margin-bottom: 0; }
+
+  .field label {
+    display: block;
+    font-size: 11.5px;
+    color: var(--dim);
+    margin-bottom: 5px;
+    letter-spacing: .3px;
+  }
+
+  select, input[type="number"] {
+    width: 100%;
+    padding: 8px 10px;
+    background: var(--card-2);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  select:focus-visible, input:focus-visible,
+  button:focus-visible, .toggle:focus-visible {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(22,163,74,.28);
+    outline: none;
+  }
+
+  .toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted);
+    user-select: none;
+    transition: border-color .15s ease, color .15s ease, background .15s ease;
+    min-height: 38px;
+  }
+  .toggle:hover { border-color: #35405c; color: var(--fg); }
+  .toggle[aria-pressed="true"] {
+    border-color: rgba(22,163,74,.5);
+    background: var(--accent-soft);
+    color: var(--fg);
+  }
+  .toggle .sw {
+    width: 26px; height: 15px;
+    border-radius: 999px;
+    background: #2a3652;
+    position: relative;
+    flex: 0 0 auto;
+    transition: background .2s ease;
+  }
+  .toggle .sw::after {
+    content: "";
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    background: var(--dim);
+    transition: transform .2s ease, background .2s ease;
+  }
+  .toggle[aria-pressed="true"] .sw { background: rgba(22,163,74,.35); }
+  .toggle[aria-pressed="true"] .sw::after { transform: translateX(11px); background: var(--accent); }
+
+  .btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 13.5px;
+    padding: 9px 16px;
+    min-height: 38px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card-2);
+    color: var(--fg);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: background .15s ease, border-color .15s ease, opacity .15s ease;
+  }
+  button:hover:not(:disabled) { background: #1a2338; border-color: #35405c; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #04170b;
+    font-weight: 600;
+  }
+  button.primary:hover:not(:disabled) { background: #1bb955; border-color: #1bb955; }
+  button.danger {
+    background: var(--danger-soft);
+    border-color: rgba(220,38,38,.45);
+    color: #fca5a5;
+  }
+  button.danger:hover:not(:disabled) { background: rgba(220,38,38,.24); }
+
+  button svg { width: 15px; height: 15px; }
+
+  /* ---------- 种子 / 农产品库存卡片（与农田卡同一视觉语言） ---------- */
+  .items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(238px, 1fr));
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 13px 14px;
+    background: var(--card);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    transition: border-color .18s ease, background .18s ease;
+  }
+  .item .ring .val { stroke: var(--accent); }
+  .item.is-full {
+    border-color: rgba(245,158,11,.45);
+    background: linear-gradient(180deg, rgba(245,158,11,.09), transparent 65%), var(--card);
+  }
+  .item.is-full .ring .val { stroke: var(--amber); }
+  .item.is-full .farm-time { color: var(--amber); }
+  .item.is-low { border-color: rgba(220,38,38,.4); }
+  .item.is-low .ring .val { stroke: var(--danger); }
+  .item.is-low .farm-time { color: #fca5a5; }
+  .item.is-idle { border-style: dashed; border-color: var(--border); }
+  .item.is-idle .ring .val { stroke: transparent; }
+  .item.is-idle .farm-time { color: var(--slate); font-size: 14px; font-weight: 500; }
+
+  /* ---------- 日志 ---------- */
+  .log-box {
+    padding: 0;
+    overflow: hidden;
+  }
+  .log-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 15px;
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 12px;
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .log-head .line { flex: 1; height: 1px; background: var(--border-soft); }
+
+  #log {
+    height: 300px;
+    overflow-y: auto;
+    padding: 10px 15px 14px;
+    font-family: "Cascadia Code", "Fira Code", Consolas, ui-monospace, monospace;
+    font-size: 12.5px;
+    line-height: 1.65;
+    scroll-behavior: smooth;
+  }
+  #log::-webkit-scrollbar { width: 9px; }
+  #log::-webkit-scrollbar-thumb { background: #26304a; border-radius: 9px; }
+  #log::-webkit-scrollbar-track { background: transparent; }
+
+  #fileLog {
+    height: 420px;
+    overflow: auto;
+    padding: 10px 15px 14px;
+    font-family: "Cascadia Code", "Fira Code", Consolas, ui-monospace, monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre;
+  }
+  #fileLog::-webkit-scrollbar { width: 9px; }
+  #fileLog::-webkit-scrollbar-thumb { background: #26304a; border-radius: 9px; }
+  #fileLog .fl { color: var(--muted); }
+  #fileLog .fl.err { color: #fca5a5; }
+  #fileLog .fl.warn { color: #fcd34d; }
+  #fileLog .fl.fatal { color: #f87171; background: rgba(220,38,38,.10); }
+  #fileLog .fl.ok { color: #86efac; }
+  #fileLog .empty-hint { display: block; }
+
+  .ln { display: flex; gap: 9px; }
+  .ln .t { color: #46536e; flex: 0 0 auto; }
+  .ln .m { color: var(--muted); word-break: break-word; }
+  .ln.ok .m { color: #86efac; }
+  .ln.warn .m { color: #fcd34d; }
+  .ln.error .m { color: #fca5a5; }
+
+  .empty-hint {
+    color: var(--dim);
+    font-size: 13px;
+    padding: 8px 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* ---------- 页签 ---------- */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    padding: 4px;
+    margin-bottom: 18px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    width: fit-content;
+  }
+  .tab {
+    padding: 7px 16px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 13.5px;
+    font-family: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: background .15s, color .15s;
+  }
+  .tab:hover { color: var(--fg); background: rgba(255,255,255,.04); }
+  .tab[aria-selected="true"] {
+    background: var(--accent-soft);
+    color: #4ade80;
+    font-weight: 600;
+  }
+  .tab .badge-num {
+    min-width: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--amber);
+    color: #1a1205;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 17px;
+    text-align: center;
+  }
+
+  /* ---------- 情报事件卡片 ---------- */
+  .events {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .ev {
+    display: flex;
+    gap: 11px;
+    padding: 12px;
+    border-radius: var(--radius);
+    background: var(--card);
+    border: 1px solid var(--border-soft);
+    transition: border-color .18s, background .18s;
+  }
+  .ev.ready {
+    border-color: rgba(245, 158, 11, .45);
+    background: linear-gradient(180deg, rgba(245,158,11,.07), transparent 60%), var(--card);
+  }
+  .ev.busy { border-color: rgba(56, 189, 248, .35); }
+  .ev.done { opacity: .5; }
+  .ev-dot {
+    width: 34px; height: 34px;
+    flex: 0 0 auto;
+    border-radius: 9px;
+    display: grid; place-items: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #0b1020;
+    background: var(--dim);
+  }
+  .ev-dot.c1 { background: #94A3B8; }
+  .ev-dot.c2 { background: #4ADE80; }
+  .ev-dot.c3 { background: #38BDF8; }
+  .ev-dot.c4 { background: #C084FC; }
+  .ev-dot.c5 { background: #FBBF24; }
+  .ev-body { min-width: 0; flex: 1 1 auto; }
+  .ev-top { display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 600; }
+  .ev-top .tag {
+    margin-left: auto;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--muted);
+    padding: 1px 6px;
+    border-radius: 5px;
+    background: rgba(255,255,255,.06);
+    white-space: nowrap;
+  }
+  .ev.ready .ev-top .tag { background: var(--amber-soft); color: var(--amber); }
+  .ev.busy .ev-top .tag { background: rgba(56,189,248,.14); color: #38BDF8; }
+  .ev-meta {
+    font-size: 11.5px;
+    color: var(--dim);
+    margin-top: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ev-req { font-size: 11.5px; color: var(--amber); margin-top: 2px; }
+
+  /* ---------- 舰队 ---------- */
+  .fleets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .fleet {
+    padding: 12px;
+    border-radius: var(--radius);
+    background: var(--card);
+    border: 1px solid var(--border-soft);
+  }
+  .fleet.idle { border-color: rgba(22,163,74,.4); }
+  .fleet-top { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; }
+  .fleet-top .st {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 1px 7px;
+    border-radius: 5px;
+    background: rgba(255,255,255,.06);
+    color: var(--muted);
+  }
+  .fleet.idle .fleet-top .st { background: var(--accent-soft); color: #4ade80; }
+  .fleet-meta { font-size: 11.5px; color: var(--dim); margin-top: 5px; }
+  .bar { height: 3px; border-radius: 2px; background: rgba(255,255,255,.08); margin-top: 7px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--accent); border-radius: 2px; transition: width .3s; }
+
+  /* ---------- 搁浅的货轮 ---------- */
+  .wrecks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .wreck {
+    padding: 12px;
+    border-radius: var(--radius);
+    background: var(--card);
+    border: 1px solid var(--border-soft);
+    position: relative;
+    cursor: default;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .wreck:hover { border-color: rgba(148,163,184,.55); }
+  .wreck:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .wreck.c5 { border-color: rgba(251,191,36,.45); background: linear-gradient(180deg, rgba(251,191,36,.07), var(--card)); }
+  .wreck.c5:hover { border-color: rgba(251,191,36,.8); }
+  .wreck.c4 { border-color: rgba(192,132,252,.4); }
+  .wreck.c4:hover { border-color: rgba(192,132,252,.75); }
+  .wreck.mine { box-shadow: inset 0 0 0 1px rgba(22,163,74,.45); }
+
+  /* 奖励悬浮卡 */
+  .wreck-pop {
+    position: fixed;
+    z-index: 60;
+    min-width: 210px;
+    max-width: 300px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #0b1020;
+    border: 1px solid var(--border);
+    box-shadow: 0 12px 32px rgba(0,0,0,.55);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity .12s ease, transform .12s ease;
+  }
+  .wreck-pop.show { opacity: 1; transform: translateY(0); }
+  .wreck-pop .pop-head {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; color: var(--muted);
+    padding-bottom: 7px; margin-bottom: 7px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .wreck-pop .pop-head .pop-q { margin-left: auto; font-weight: 500; font-size: 11px; color: var(--dim); }
+  .wreck-pop .pop-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12.5px; line-height: 1.9;
+  }
+  .wreck-pop .pop-row .pop-nm { color: var(--fg); }
+  .wreck-pop .pop-row .pop-num { margin-left: auto; color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .wreck-pop .pop-row.is-gold .pop-nm { color: var(--amber); }
+  .wreck-pop .pop-empty { font-size: 12px; color: var(--dim); }
+  .wreck-top { display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 600; }
+  .wreck-top .uid { font-size: 11px; color: var(--dim); font-weight: 500; }
+  .wreck-top .num {
+    margin-left: auto; font-size: 11px; font-weight: 500;
+    padding: 1px 7px; border-radius: 5px;
+    background: rgba(255,255,255,.06); color: var(--muted);
+  }
+  .wreck-meta { font-size: 11.5px; color: var(--dim); margin-top: 5px; }
+  .wreck-meta b { color: var(--fg); font-weight: 600; }
+  .wfleets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .wfleet { padding: 12px; border-radius: var(--radius); background: var(--card); border: 1px solid var(--border-soft); }
+  .wfleet.home { border-color: rgba(22,163,74,.4); }
+  .wfleet.busy { border-color: rgba(56,189,248,.35); }
+  .wfleet.rep { border-color: rgba(251,191,36,.45); }
+  .wfleet-top { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; }
+  .wfleet-top .st { margin-left: auto; font-size: 11px; font-weight: 500; padding: 1px 7px; border-radius: 5px; background: rgba(255,255,255,.06); color: var(--muted); }
+  .wfleet.home .wfleet-top .st { background: var(--accent-soft); color: #4ade80; }
+  .wfleet.rep .wfleet-top .st { background: rgba(251,191,36,.14); color: var(--amber); }
+  .wfleet.busy .wfleet-top .st { background: rgba(56,189,248,.14); color: #38BDF8; }
+  .wfleet-meta { font-size: 11.5px; color: var(--dim); margin-top: 5px; }
+
+  /* ---------- 类型筛选胶囊 ---------- */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--muted);
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .chip:hover { border-color: #35405c; color: var(--fg); }
+  .chip[aria-pressed="true"] {
+    background: var(--accent-soft);
+    border-color: rgba(22,163,74,.5);
+    color: #4ade80;
+  }
+
+  @media (max-width: 1100px) {
+    .wrecks { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 760px) {
+    .events { grid-template-columns: repeat(2, 1fr); }
+    .wrecks { grid-template-columns: repeat(2, 1fr); }
+    .wfleets { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 560px) {
+    .wrap { padding: 16px 13px 40px; }
+    .titles h1 { font-size: 15.5px; }
+    .stats { grid-template-columns: repeat(3, 1fr); }
+    .stat { padding: 10px 11px; }
+    .stat .v { font-size: 18px; }
+    .farms { grid-template-columns: 1fr 1fr; }
+    .farm { padding: 11px; gap: 10px; }
+    .ring { width: 42px; height: 42px; }
+    .ring svg { width: 42px; height: 42px; }
+    .farm-time { font-size: 15px; }
+    .farm-sub {
+      font-size: 11px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #log { height: 240px; }
+    .tab { padding: 7px 12px; font-size: 13px; }
+    .fleets { grid-template-columns: 1fr; }
+    .events { grid-template-columns: 1fr; }
+    .wrecks { grid-template-columns: 1fr; }
+    .wfleets { grid-template-columns: 1fr; }
+    .ev-top .ev-tag { font-size: 10.5px; }
+    .fleet-meta { white-space: normal; }
+  }
+  @media (max-width: 400px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .farms { grid-template-columns: 1fr; }
+  }
+
+  /* ---- 运行闸门（三个开关） ---- */
+  .guard {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 10px 16px;
+    align-items: center;
+  }
+  .guard-modes { display: flex; gap: 8px; flex-wrap: wrap; }
+  .gmode {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: 9px;
+    background: #131a2e; border: 1px solid var(--border);
+    color: var(--text); font: inherit; font-size: 13px; cursor: pointer;
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  .gmode svg { width: 15px; height: 15px; }
+  .gmode:hover { border-color: #38455f; background: #17203a; }
+  .gmode[aria-checked="true"] {
+    background: rgba(22, 163, 74, .16);
+    border-color: rgba(22, 163, 74, .55);
+    color: #4ade80;
+  }
+  .gmode.danger[aria-checked="true"] {
+    background: rgba(220, 38, 38, .16);
+    border-color: rgba(220, 38, 38, .55);
+    color: #f87171;
+  }
+  .gmode:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .guard-win {
+    display: none; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .guard.win .guard-win { display: flex; }
+  .guard-win input[type="time"] {
+    background: #131a2e; border: 1px solid var(--border); color: var(--text);
+    border-radius: 7px; padding: 6px 8px; font: inherit; font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  .guard-win .sep { color: var(--dim); }
+  .gd { display: flex; gap: 4px; }
+  .gd button {
+    width: 26px; height: 26px; border-radius: 6px;
+    background: #131a2e; border: 1px solid var(--border); color: var(--dim);
+    font: inherit; font-size: 12px; cursor: pointer; padding: 0;
+  }
+  .gd button[aria-pressed="true"] { background: rgba(22, 163, 74, .18); border-color: rgba(22, 163, 74, .5); color: #4ade80; }
+  .guard-hint {
+    grid-column: 1 / -1; font-size: 12px; color: var(--dim);
+    border-top: 1px solid var(--border); padding-top: 9px;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .guard-hint b { color: var(--text); font-weight: 500; }
+  .guard-hint.warn b, .guard-hint.warn { color: var(--amber); }
+  .guard-hint.stop b { color: #f87171; }
+  .guard-hint .bt {
+    margin-left: auto; font-size: 11px; padding: 3px 9px; border-radius: 6px;
+    background: #131a2e; border: 1px solid var(--border); color: var(--dim); cursor: pointer;
+  }
+  .guard-hint .bt:hover { color: var(--text); border-color: #38455f; }
+  @media (max-width: 760px) {
+    .guard { grid-template-columns: 1fr; }
+    .gmode { flex: 1 1 0; justify-content: center; }
+    .guard-modes { flex-wrap: nowrap; }
+  }
+  @media (max-width: 420px) {
+    .gmode { padding: 7px 6px; font-size: 12px; }
+    .gmode svg { display: none; }
+    .guard-win input[type="time"] { width: 96px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#04170b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 21V9"/><path d="M12 9c0-3 2-5 5-5 0 3-2 5-5 5Z"/><path d="M12 13c0-3-2-5-5-5 0 3 2 5 5 5Z"/>
+      </svg>
+    </div>
+    <div class="titles">
+      <h1>疯狂水世界 控制台</h1>
+      <p id="subtitle">正在连接…</p>
+    </div>
+    <span class="pill" id="connPill"><span class="dot" id="connDot"></span><span id="connText">离线</span></span>
+    <span class="pill" id="nextPill" hidden><span class="mono" id="nextText">—</span></span>
+  </header>
+
+  <div class="guard" id="guardBar">
+    <div class="guard-modes" role="radiogroup" aria-label="运行模式">
+      <button class="gmode" id="gmWindow" role="radio" aria-checked="false" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        指定时间段
+      </button>
+      <button class="gmode" id="gmManual" role="radio" aria-checked="false" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        立即运行
+      </button>
+      <button class="gmode danger" id="gmStop" role="radio" aria-checked="false" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+        全局停止
+      </button>
+    </div>
+    <div class="guard-win" id="guardWin">
+      <input type="time" id="gStart" value="02:00" aria-label="开始时间">
+      <span class="sep">→</span>
+      <input type="time" id="gEnd" value="07:30" aria-label="结束时间">
+      <div class="gd" id="gDays" aria-label="星期">
+        <button type="button" data-d="1">一</button>
+        <button type="button" data-d="2">二</button>
+        <button type="button" data-d="3">三</button>
+        <button type="button" data-d="4">四</button>
+        <button type="button" data-d="5">五</button>
+        <button type="button" data-d="6">六</button>
+        <button type="button" data-d="0">日</button>
+      </div>
+    </div>
+    <div class="guard-hint" id="guardHint">—</div>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="功能模块">
+    <button class="tab" id="tabFarm" role="tab" aria-selected="true" aria-controls="paneFarm" type="button">农田</button>
+    <button class="tab" id="tabRadar" role="tab" aria-selected="false" aria-controls="paneRadar" type="button">
+      联盟情报<span class="badge-num" id="radarBadge" hidden>0</span>
+    </button>
+    <button class="tab" id="tabWreck" role="tab" aria-selected="false" aria-controls="paneWreck" type="button">
+      搁浅的货轮<span class="badge-num" id="wreckBadge" hidden>0</span>
+    </button>
+    <button class="tab" id="tabLogs" role="tab" aria-selected="false" aria-controls="paneLogs" type="button">日志</button>
+    <button class="tab" id="tabAbout" role="tab" aria-selected="false" aria-controls="paneAbout" type="button">关于</button>
+  </div>
+
+  <!-- ============ 农田面板 ============ -->
+  <section id="paneFarm" role="tabpanel" aria-labelledby="tabFarm">
+  <div class="stats">
+    <div class="stat"><div class="k">农田</div><div class="v" id="sFarms">—<small>块</small></div></div>
+    <div class="stat"><div class="k">已成熟</div><div class="v" id="sReady">—<small>块</small></div></div>
+    <div class="stat"><div class="k">累计收获</div><div class="v" id="sHarvest">—<small>块次</small></div></div>
+    <div class="stat"><div class="k">累计补种</div><div class="v" id="sPlant">—<small>块次</small></div></div>
+    <div class="stat"><div class="k">执行轮次</div><div class="v" id="sRounds">—</div></div>
+  </div>
+
+  <div class="sec-head"><span>农田状态</span><span class="line"></span><span id="farmHint" class="mono" style="font-size:11px"></span></div>
+  <div class="farms" id="farms"></div>
+
+  <div class="sec-head"><span>种子库存</span><span class="line"></span><span id="seedHint" class="mono" style="font-size:11px"></span></div>
+  <div class="items" id="seeds"><span class="empty-hint">尚未读取</span></div>
+
+  <div class="sec-head"><span>农产品库存</span><span class="line"></span><span id="stockHint" class="mono" style="font-size:11px"></span></div>
+  <div class="items" id="stocks"><span class="empty-hint">尚未读取</span></div>
+
+  <div class="sec-head"><span>待收产出</span><span class="line"></span><span id="prodHint" class="mono" style="font-size:11px"></span></div>
+  <div class="items" id="prods"><span class="empty-hint">尚未读取</span></div>
+
+  <div class="sec-head"><span>运行设置</span><span class="line"></span></div>
+  <div class="card panel">
+    <div class="row">
+      <div class="field">
+        <label for="cropSelect">指定作物</label>
+        <select id="cropSelect">
+          <option value="">自动（挑库存够、成熟最快）</option>
+          <!-- 时长按账号实际加速后的周期标注（约为配置表的一半，实测小麦 1800s→891s） -->
+          <option value="小麦">小麦 · 15 分钟</option>
+          <option value="玉米">玉米 · 15 分钟</option>
+          <option value="土豆">土豆 · 20 分钟</option>
+          <option value="番茄">番茄 · 20 分钟</option>
+          <option value="胡萝卜">胡萝卜 · 30 分钟</option>
+          <option value="卷心菜">卷心菜 · 30 分钟</option>
+          <option value="大豆">大豆 · 40 分钟</option>
+          <option value="南瓜">南瓜 · 40 分钟</option>
+          <option value="辣椒">辣椒 · 50 分钟</option>
+          <option value="茄子">茄子 · 50 分钟</option>
+          <option value="花菜">花菜 · 60 分钟</option>
+          <option value="可可豆">可可豆 · 60 分钟</option>
+          <option value="橡胶">橡胶 · 130 分钟</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="minGap">最短间隔（秒）</label>
+        <input type="number" id="minGap" min="5" max="3600" step="5" value="30">
+      </div>
+      <div class="field">
+        <label>动作开关</label>
+        <div class="toggles">
+          <button class="toggle" id="tHarvest" aria-pressed="true" type="button">
+            <span class="sw" aria-hidden="true"></span>收获
+          </button>
+          <button class="toggle" id="tPlant" aria-pressed="true" type="button">
+            <span class="sw" aria-hidden="true"></span>补种
+          </button>
+          <button class="toggle" id="tDry" aria-pressed="false" type="button">
+            <span class="sw" aria-hidden="true"></span>演练
+          </button>
+          <button class="toggle" id="tAvoid" aria-pressed="false" type="button">
+            <span class="sw" aria-hidden="true"></span>避让游戏窗口
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="btns">
+      <button class="primary" id="btnAuto" type="button">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        <span id="btnAutoText">开启自动</span>
+      </button>
+      <button id="btnRound" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+        立即执行一轮
+      </button>
+      <button id="btnRefresh" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>
+        刷新状态
+      </button>
+    </div>
+  </div>
+  </section>
+
+  <!-- ============ 联盟情报面板 ============ -->
+  <section id="paneRadar" role="tabpanel" aria-labelledby="tabRadar" hidden>
+  <div class="stats">
+    <div class="stat"><div class="k">情报等级</div><div class="v" id="rLevel">—</div></div>
+    <div class="stat"><div class="k">经验</div><div class="v" id="rExp">—</div></div>
+    <div class="stat"><div class="k">可派事件</div><div class="v" id="rInit">—<small>个</small></div></div>
+    <div class="stat"><div class="k">待领奖</div><div class="v" id="rDone">—<small>个</small></div></div>
+    <div class="stat"><div class="k">空闲舰队</div><div class="v" id="rIdle">—<small>艘</small></div></div>
+    <div class="stat"><div class="k">下批刷新</div><div class="v mono" id="rRefresh" style="font-size:17px">—</div></div>
+  </div>
+
+  <div class="sec-head"><span>舰队</span><span class="line"></span><span id="petrolHint" class="mono" style="font-size:11px"></span></div>
+  <div class="fleets" id="fleets"><div class="empty-hint">尚未读取</div></div>
+
+  <div class="sec-head"><span>事件</span><span class="line"></span><span id="radarHint" class="mono" style="font-size:11px"></span></div>
+  <div class="events" id="events"><div class="empty-hint">尚未读取，点「读取情报」</div></div>
+
+  <div class="sec-head"><span>只打这些类型</span><span class="line"></span></div>
+  <div class="chips" id="typeChips"></div>
+
+  <div class="sec-head"><span>运行设置</span><span class="line"></span></div>
+  <div class="card panel">
+    <div class="row">
+      <div class="field">
+        <label>动作开关</label>
+        <div class="toggles">
+          <button class="toggle" id="tClaim" aria-pressed="true" type="button">
+            <span class="sw" aria-hidden="true"></span>领取奖励
+          </button>
+          <button class="toggle" id="tDispatch" aria-pressed="true" type="button">
+            <span class="sw" aria-hidden="true"></span>派出舰队
+          </button>
+          <button class="toggle" id="tRdry" aria-pressed="false" type="button">
+            <span class="sw" aria-hidden="true"></span>演练
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="btns">
+      <button class="primary" id="btnRadarRound" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+        领奖 + 派舰队
+      </button>
+      <button id="btnRadarRefresh" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>
+        只读取情报
+      </button>
+    </div>
+    <div class="hint" style="margin-top:10px;font-size:12px;color:var(--dim)">
+      每派一次消耗 <b id="petrolCost">500</b> 汽油；一个事件只会派一个舰队，三个舰队自动分配。<br>
+      情报事件每 8 小时刷新一批，<b>不做常驻监测</b>——想跑的时候点一次上面的按钮即可（每次连接只在线 1~2 秒）。
+    </div>
+  </div>
+  </section>
+
+  <!-- ============ 搁浅的货轮面板 ============ -->
+  <section id="paneWreck" role="tabpanel" aria-labelledby="tabWreck" hidden>
+  <div class="stats">
+    <div class="stat"><div class="k">万吨货轮</div><div class="v" id="wOrange">—<small>条</small></div></div>
+    <div class="stat"><div class="k">中型货轮</div><div class="v" id="wPurple">—<small>条</small></div></div>
+    <div class="stat"><div class="k">小型货轮</div><div class="v" id="wBlue">—<small>条</small></div></div>
+    <div class="stat"><div class="k">今日奖励</div><div class="v" id="wTimes">—<small>次</small></div></div>
+    <div class="stat"><div class="k">我的舰队</div><div class="v" id="wFleets">—<small>艘</small></div></div>
+    <div class="stat"><div class="k">下批刷新</div><div class="v mono" id="wRefresh" style="font-size:17px">—</div></div>
+  </div>
+
+  <div class="sec-head"><span>我的舰队</span><span class="line"></span><span id="wFleetHint" class="mono" style="font-size:11px"></span></div>
+  <div class="wfleets" id="wFleetsBox"><div class="empty-hint">尚未读取</div></div>
+
+  <div class="sec-head"><span>货轮</span><span class="line"></span><span id="wHint" class="mono" style="font-size:11px"></span></div>
+  <div class="wrecks" id="wrecks"><div class="empty-hint">尚未读取，点「读取货轮」</div></div>
+
+  <div class="sec-head"><span>打哪些品质</span><span class="line"></span></div>
+  <div class="chips" id="colorChips"></div>
+
+  <div class="sec-head"><span>运行设置</span><span class="line"></span></div>
+  <div class="card panel">
+    <div class="row">
+      <div class="field">
+        <label>动作开关</label>
+        <div class="toggles">
+          <button class="toggle" id="tWRepair" aria-pressed="true" type="button">
+            <span class="sw" aria-hidden="true"></span>战败自动修复
+          </button>
+          <button class="toggle" id="tWDispatch" aria-pressed="true" type="button">
+            <span class="sw" aria-hidden="true"></span>自动派出
+          </button>
+          <button class="toggle" id="tWdry" aria-pressed="false" type="button">
+            <span class="sw" aria-hidden="true"></span>演练
+          </button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="wDura">派出所需耐久比例</label>
+        <select id="wDura">
+          <option value="1">满耐久才派（最稳）</option>
+          <option value="0.8">80% 以上就派</option>
+          <option value="0.6">60% 以上就派</option>
+          <option value="0">只要还有耐久就派</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="wMax">每条货轮最多派几艘</label>
+        <select id="wMax">
+          <option value="1">1 艘</option>
+          <option value="2">2 艘</option>
+          <option value="3">3 艘</option>
+        </select>
+      </div>
+    </div>
+    <div class="btns">
+      <button class="primary" id="btnWreckAuto" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
+        <span id="btnWreckAutoText">循环出兵</span>
+      </button>
+      <button id="btnWreckRound" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+        只跑一轮
+      </button>
+      <button id="btnWreckRefresh" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>
+        只读取货轮
+      </button>
+    </div>
+    <div class="hint" style="margin-top:10px;font-size:12px;color:var(--dim)">
+      点<b>「循环出兵」</b>后，本进程会自己一直循环：<b>耐久不满的舰队先修复</b> → 修复完自动派出占领 →
+      战败回驻点后自动修复 → 修复完再派出，<b>直到万吨货轮消失或今日奖励次数用完</b>才停（不用你再点）。<br>
+      派出顺序<b>按品质优先级</b>：先把万吨货轮占满（同一品质内优先进度高的），万吨没有或已达上限才退到中型，再退小型。<br>
+      <b>8:00~22:00 每个整点</b>都会刷新一轮货轮，万吨也在其中（S4 的 19/21 点额外多刷 2 个万吨）。
+    </div>
+  </div>
+  </section>
+
+  <!-- ============ 日志面板 ============ -->
+  <section id="paneLogs" role="tabpanel" aria-labelledby="tabLogs" hidden>
+    <div class="sec-head"><span>历史日志</span><span class="line"></span><span id="logFileHint" class="mono" style="font-size:11px"></span></div>
+    <div class="card panel">
+      <div class="row">
+        <div class="field">
+          <label for="logDate">日期</label>
+          <select id="logDate"></select>
+        </div>
+        <div class="field">
+          <label for="logLines">显示行数</label>
+          <select id="logLines">
+            <option value="200">最近 200 行</option>
+            <option value="500" selected>最近 500 行</option>
+            <option value="2000">最近 2000 行</option>
+            <option value="5000">全部（最多 5000）</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>故障排查</label>
+          <div class="toggles">
+            <button class="toggle" id="tOnlyFatal" aria-pressed="false" type="button">
+              <span class="sw" aria-hidden="true"></span>只看崩溃记录
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="btns">
+        <button class="primary" id="btnLogLoad" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>
+          读取日志
+        </button>
+        <button id="btnLogDownload" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M5 21h14"/></svg>
+          下载本文件
+        </button>
+      </div>
+      <div class="hint" style="margin-top:10px;font-size:12px;color:var(--dim)">
+        日志按天写到服务器的 <b>logs/server-YYYY-MM-DD.log</b>，保留 14 天。<br>
+        进程意外停止时，先看这一天的最后几行；如果里面有 <b>[fatal]</b> 就是代码崩了（带堆栈），
+        如果日志<b>突然断掉、没有任何退出记录</b>，说明是被强杀或内存不足（OOM），要去看
+        <span class="mono">journalctl -u farmbot-console</span> 和 <span class="mono">dmesg</span>。
+      </div>
+    </div>
+    <div class="card log-box" style="margin-top:14px">
+      <div class="log-head"><span>日志内容</span><span class="line"></span><span id="logFileCount" class="mono" style="font-size:11px"></span></div>
+      <div id="fileLog" role="log" aria-live="polite" aria-label="历史日志"></div>
+    </div>
+  </section>
+
+  <!-- ============ 关于 / 在线更新 ============ -->
+  <section id="paneAbout" role="tabpanel" aria-labelledby="tabAbout" hidden>
+  <div class="stats">
+    <div class="stat"><div class="k">当前版本</div><div class="v mono" id="abVer" style="font-size:19px">—</div></div>
+    <div class="stat"><div class="k">远端版本</div><div class="v mono" id="abLatest" style="font-size:19px">—</div></div>
+    <div class="stat"><div class="k">更新状态</div><div class="v" id="abState" style="font-size:15px">—</div></div>
+    <div class="stat"><div class="k">Node</div><div class="v mono" id="abNode" style="font-size:15px">—</div></div>
+  </div>
+
+  <div class="card panel">
+    <div class="row">
+      <div class="field">
+        <label>代码仓库</label>
+        <div class="mono" id="abRepo" style="font-size:13px;color:var(--dim)">—</div>
+      </div>
+      <div class="field">
+        <label>更新说明</label>
+        <div id="abNotes" style="font-size:13px;color:var(--dim)">—</div>
+      </div>
+    </div>
+    <div class="btns">
+      <button class="primary" id="btnCheckUpdate" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>
+        检查更新
+      </button>
+      <button id="btnApplyUpdate" type="button" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+        立即更新并重启
+      </button>
+    </div>
+    <div class="hint" style="margin-top:10px;font-size:12px;color:var(--dim)">
+      更新只覆盖<b>程序文件</b>（js / web / 文档 / version.json），
+      <b>不会动</b> <span class="mono">cfg/</span>、<span class="mono">game_src/</span>、<span class="mono">node_modules/</span>、
+      <span class="mono">cred.json</span>、<span class="mono">buf_login.bin</span>、<span class="mono">auth.json</span>、<span class="mono">guard.json</span>，登录凭据和你的设置都会保留。<br>
+      覆盖前会把旧文件备份到 <span class="mono">_backup/&lt;时间戳&gt;/</span>，万一新版有问题可以直接拷回去。<br>
+      更新完成后进程会以退出码 <b>75</b> 退出，由 <span class="mono">systemd</span>（<b>Restart=always</b>）或 <span class="mono">start.sh</span> 自动拉起新版本。
+    </div>
+  </div>
+  </section>
+
+  <div class="card log-box">
+    <div class="log-head"><span>运行日志</span><span class="line"></span><span id="logCount" class="mono" style="font-size:11px"></span></div>
+    <div id="log" role="log" aria-live="polite" aria-label="运行日志"></div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const $ = (id) => document.getElementById(id);
+
+  let serverSkew = 0;        // 服务器时间 - 本地时间（秒）
+  let lastFetchLocal = 0;    // 上次拉取快照的本地毫秒时间戳
+  let farms = [];            // 最近一次农田数据
+  let state = { auto: false, running: false };
+  let logCount = 0;
+
+  const pad = (n) => String(n).padStart(2, '0');
+  function fmtLeft(sec) {
+    if (sec <= 0) return '已成熟';
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = Math.floor(sec % 60);
+    if (h > 0) return h + ':' + pad(m) + ':' + pad(s);
+    return pad(m) + ':' + pad(s);
+  }
+  function fmtClock(ts) {
+    const d = new Date(ts * 1000);
+    return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+
+  // ---------- 农田卡片 ----------
+  const R = 22, C = 2 * Math.PI * R;
+
+  function farmCard(f, idx) {
+    const el = document.createElement('div');
+    el.className = 'farm';
+    el.dataset.idx = String(idx);
+    el.innerHTML =
+      '<div class="ring">' +
+        '<svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">' +
+          '<circle class="trk" cx="26" cy="26" r="' + R + '" fill="none" stroke-width="4"/>' +
+          '<circle class="val" cx="26" cy="26" r="' + R + '" fill="none" stroke-width="4" ' +
+            'stroke-linecap="round" stroke-dasharray="' + C.toFixed(1) + '" stroke-dashoffset="' + C.toFixed(1) + '"/>' +
+        '</svg>' +
+        '<div class="pct">—</div>' +
+      '</div>' +
+      '<div class="farm-body">' +
+        '<div class="farm-top"><span class="farm-name"></span><span class="badge"></span></div>' +
+        '<div class="farm-time mono">—</div>' +
+        '<div class="farm-sub"></div>' +
+      '</div>';
+    return el;
+  }
+
+  function renderFarms() {
+    const box = $('farms');
+    box.innerHTML = '';
+    if (!farms.length) {
+      box.innerHTML = '<div class="empty-hint">还没有数据，点「刷新状态」读取</div>';
+      return;
+    }
+    farms.forEach((f, i) => box.appendChild(farmCard(f, i)));
+    updateFarms();
+  }
+
+  function updateFarms() {
+    const nowS = Math.floor(Date.now() / 1000) + serverSkew;
+    const elapsed = lastFetchLocal ? (Date.now() - lastFetchLocal) / 1000 : 0;
+    const cards = $('farms').querySelectorAll('.farm');
+    let readyCount = 0;
+
+    farms.forEach((f, i) => {
+      const el = cards[i];
+      if (!el) return;
+
+      const left = f.state === 'empty' ? 0 : f.left - elapsed;
+      const state = f.state === 'empty' ? 'empty' : left <= 0 ? 'ready' : 'growing';
+      if (state === 'ready') readyCount++;
+
+      el.classList.toggle('is-ready', state === 'ready');
+      el.classList.toggle('is-empty', state === 'empty');
+
+      el.querySelector('.farm-name').textContent = f.id;
+      el.querySelector('.badge').textContent = 'Lv ' + (f.level || 1);
+
+      const timeEl = el.querySelector('.farm-time');
+      timeEl.textContent = state === 'empty' ? '空地待种' : fmtLeft(left);
+
+      const cyc = f.growReal || f.growSec;
+      const sub = state === 'empty'
+        ? '无作物'
+        : (f.crop || '—') + (f.produceNum ? ' · 产出 ' + f.produceNum : '') +
+          (cyc ? ' · 周期 ' + Math.round(cyc / 60) + '分' : '');
+      el.querySelector('.farm-sub').textContent = sub;
+
+      // 进度环
+      const total = f.growReal || (f.ripeTime - f.plantTime);
+      let p = state === 'empty' ? 0 : total > 0 ? (total - left) / total : 0;
+      p = Math.max(0, Math.min(1, p));
+      if (state === 'ready') p = 1;
+      el.querySelector('.val').setAttribute('stroke-dashoffset', (C * (1 - p)).toFixed(1));
+      el.querySelector('.pct').textContent = state === 'empty' ? '—' : Math.round(p * 100) + '%';
+    });
+
+    $('sFarms').innerHTML = farms.length + '<small>块</small>';
+    $('sReady').innerHTML = readyCount + '<small>块</small>';
+    $('farmHint').textContent = lastFetchLocal ? '读取于 ' + fmtClock(lastFetchLocal / 1000) : '';
+  }
+
+  // ---------- 通用卡片（种子 / 农产品 / 待收产出，与农田卡同一视觉语言） ----------
+  function itemCard(o) {
+    const el = document.createElement('div');
+    el.className = 'item' + (o.cls ? ' ' + o.cls : '');
+    const pct = Math.max(0, Math.min(1, o.pct || 0));
+    el.innerHTML =
+      '<div class="ring">' +
+        '<svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">' +
+          '<circle class="trk" cx="26" cy="26" r="' + R + '" fill="none" stroke-width="4"/>' +
+          '<circle class="val" cx="26" cy="26" r="' + R + '" fill="none" stroke-width="4" ' +
+            'stroke-linecap="round" stroke-dasharray="' + C.toFixed(1) + '" ' +
+            'stroke-dashoffset="' + (C * (1 - pct)).toFixed(1) + '"/>' +
+        '</svg>' +
+        '<div class="pct"></div>' +
+      '</div>' +
+      '<div class="farm-body">' +
+        '<div class="farm-top"><span class="farm-name"></span><span class="badge"></span></div>' +
+        '<div class="farm-time mono"></div>' +
+        '<div class="farm-sub"></div>' +
+      '</div>';
+    el.querySelector('.farm-name').textContent = o.name;
+    el.querySelector('.badge').textContent = o.badge || '';
+    el.querySelector('.badge').hidden = !o.badge;
+    el.querySelector('.farm-time').textContent = o.big;
+    el.querySelector('.farm-sub').textContent = o.sub || '';
+    el.querySelector('.pct').textContent = o.center != null ? o.center : '';
+    if (o.title) el.title = o.title;
+    return el;
+  }
+
+  // ---------- 种子库存 ----------
+  function renderSeeds(list) {
+    const box = $('seeds');
+    box.innerHTML = '';
+    if (!list || !list.length) {
+      box.innerHTML = '<div class="empty-hint">没有种子数据</div>';
+      $('seedHint').textContent = '';
+      return;
+    }
+    const total = list.reduce((a, s) => a + s.num, 0);
+    $('seedHint').textContent = list.length + ' 种 · 共 ' + total;
+    list.slice().sort((a, b) => b.num - a.num).forEach((s) => {
+      const name = s.id.replace(/种子$/, '');
+      const empty = s.num <= 0;
+      box.appendChild(itemCard({
+        name: name,
+        badge: '种子',
+        big: s.num,
+        sub: empty ? '已用完' : '够种 ' + s.num + ' 块田',
+        // 种子没有硬上限，进度环只表达「有/无」状态，不伪造百分比
+        pct: empty ? 0 : 1,
+        center: empty ? '—' : '',
+        cls: empty ? 'is-idle' : (s.num < 20 ? 'is-low' : ''),
+        title: empty ? (name + ' 种子已用完') : (name + ' 种子 ' + s.num + ' 个，每块田消耗 1 个'),
+      }));
+    });
+  }
+
+  // ---------- 农产品库存（超过上限后服务端会拒绝种植） ----------
+  function renderStocks(crops, maxStock) {
+    const box = $('stocks');
+    $('stockHint').textContent = maxStock ? '上限 ' + maxStock + ' / 种' : '';
+    box.innerHTML = '';
+    if (!crops || !crops.length) {
+      box.innerHTML = '<div class="empty-hint">没有农产品数据</div>';
+      return;
+    }
+    crops.forEach((c) => {
+      const pct = maxStock > 0 ? c.stock / maxStock : 0;
+      const room = Math.max(0, maxStock - c.stock);
+      box.appendChild(itemCard({
+        name: c.id,
+        badge: c.full ? '已满' : '农产品',
+        big: c.stock + (maxStock ? ' / ' + maxStock : ''),
+        sub: c.full
+          ? '库存已满，无法再种（需先在游戏内消耗）'
+          : '剩余可种 ' + room + ' 个 · 种子 ' + c.seeds,
+        pct: pct,
+        center: Math.round(Math.min(1, pct) * 100) + '%',
+        cls: c.full ? 'is-full' : '',
+        title: c.full ? (c.id + ' 已达库存上限 ' + maxStock + '，服务端会拒绝种植') :
+          (c.id + ' 库存 ' + c.stock + '/' + maxStock + '，还能种 ' + room + ' 个，种子 ' + c.seeds),
+      }));
+    });
+  }
+
+  // ---------- 待收产出（工厂成品 + 手工产出） ----------
+  function renderProduction(p) {
+    const box = $('prods');
+    box.innerHTML = '';
+    if (!p || !p.total) {
+      box.innerHTML = '<div class="empty-hint">没有待收产出</div>';
+      $('prodHint').textContent = '';
+      return;
+    }
+    $('prodHint').textContent = '待收 ' + p.total + ' 处 · 收获农田时自动收取';
+    const list = []
+      .concat((p.factory || []).map((x) => ({ id: x.id, kind: '工厂', items: x.finished, auto: x.auto, queued: x.queued })))
+      .concat((p.manual || []).map((x) => ({ id: x.id, kind: '产出', items: x.items })))
+      // 待收多的按件数从多到少排，只显示前 8 个，避免页面被几十张卡撑得太长
+      .sort((a, b) => (b.items || []).reduce((s, i) => s + i.num, 0) - (a.items || []).reduce((s, i) => s + i.num, 0));
+    const shown = list.slice(0, 8);
+    shown.forEach((x) => {
+      const items = x.items || [];
+      const sum = items.reduce((a, i) => a + i.num, 0);
+      const desc = items.map((i) => i.id + '×' + i.num).join(' · ') || '—';
+      box.appendChild(itemCard({
+        name: x.id,
+        badge: x.kind,
+        big: sum + ' 件',
+        sub: desc + (x.auto ? ' · 自动生产 ' + x.auto : '') + (x.queued ? ' · 队列 ' + x.queued : ''),
+        pct: 1,
+        center: items.length + '种',
+        cls: '',
+        title: x.id + ' 待收：' + desc,
+      }));
+    });
+    if (list.length > shown.length) {
+      const more = document.createElement('div');
+      more.className = 'empty-hint';
+      more.style.alignSelf = 'center';
+      more.textContent = '另有 ' + (list.length - shown.length) + ' 处待收（收益不高的，收获时同样会一并收取）';
+      box.appendChild(more);
+    }
+  }
+
+  // ---------- 日志 ----------
+  function addLog(item) {
+    const box = $('log');
+    const ln = document.createElement('div');
+    ln.className = 'ln ' + (item.level || 'info');
+    const d = new Date(item.t);
+    ln.innerHTML = '<span class="t">' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + '</span><span class="m"></span>';
+    ln.querySelector('.m').textContent = item.text;
+    box.appendChild(ln);
+    while (box.childElementCount > 500) box.removeChild(box.firstChild);
+    box.scrollTop = box.scrollHeight;
+    logCount++;
+    $('logCount').textContent = logCount + ' 条';
+  }
+
+  // ---------- 运行闸门（三个开关） ----------
+  const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+  let gState = null;       // 当前 guard 视图
+  let gBusy = false;
+  // 星期按钮由本地持有：服务端回包里可能还是旧值（我们自己的保存还在路上），
+  // 若直接回填会把连点结果冲掉。只在第一次拿到服务端数据时初始化一次。
+  let gDaysLocal = null;
+  let gDaysTimer = null;
+
+  function gDays() {
+    return [...document.querySelectorAll('#gDays button')]
+      .filter((b) => b.getAttribute('aria-pressed') === 'true')
+      .map((b) => Number(b.dataset.d));
+  }
+
+  function renderGuard(g) {
+    gState = g;
+    $('guardBar').classList.toggle('win', g.mode === 'window');
+    $('gmWindow').setAttribute('aria-checked', String(g.mode === 'window'));
+    $('gmManual').setAttribute('aria-checked', String(g.mode === 'manual'));
+    $('gmStop').setAttribute('aria-checked', String(g.mode === 'stopped'));
+    if (document.activeElement !== $('gStart')) $('gStart').value = g.start;
+    if (document.activeElement !== $('gEnd')) $('gEnd').value = g.end;
+    const days = Array.isArray(g.days) ? g.days : DAY_ORDER;
+    if (gDaysLocal === null) gDaysLocal = days.slice();
+    for (const b of document.querySelectorAll('#gDays button')) {
+      b.setAttribute('aria-pressed', String(gDaysLocal.includes(Number(b.dataset.d))));
+    }
+    // 提示行
+    const hint = $('guardHint');
+    hint.className = 'guard-hint';
+    hint.innerHTML = '';
+    const left = document.createElement('span');
+    let txt = '';
+    if (g.mode === 'stopped') {
+      hint.classList.add('stop');
+      txt = '全局已停止：所有自动行为都不会连接服务器';
+    } else if (g.reason === 'backoff') {
+      hint.classList.add('warn');
+      txt = g.hint + '（刚连上就被踢，说明有人正在玩，主动让位）';
+    } else if (g.mode === 'window') {
+      if (g.running) txt = '运行时段内，自动循环按计划执行';
+      else txt = g.hint;
+    } else {
+      txt = '手动模式：自动循环随时可以运行';
+    }
+    left.innerHTML = '<b></b>';
+    left.querySelector('b').textContent = txt;
+    hint.appendChild(left);
+    if (g.kickCount > 0 && g.mode !== 'stopped') {
+      const bt = document.createElement('button');
+      bt.type = 'button'; bt.className = 'bt';
+      bt.textContent = '清除退避（已被踢 ' + g.kickCount + ' 次）';
+      bt.addEventListener('click', () => guardSet({ clearBackoff: true }));
+      hint.appendChild(bt);
+    }
+  }
+
+  async function guardSet(patch) {
+    if (gBusy) return;
+    gBusy = true;
+    try {
+      const r = await api('/api/guard/config', { method: 'POST', body: JSON.stringify(patch) });
+      if (r.guard) renderGuard(r.guard);
+      if (r.state) applyState(r.state);
+      addLog({ t: Date.now(), text: '运行模式已切换', level: 'info' });
+    } catch (e) {
+      addLog({ t: Date.now(), text: '切换运行模式失败: ' + e.message, level: 'error' });
+    } finally {
+      gBusy = false;
+    }
+  }
+
+  function initGuard() {
+    $('gmWindow').addEventListener('click', () => guardSet({ mode: 'window' }));
+    $('gmManual').addEventListener('click', () => guardSet({ mode: 'manual' }));
+    $('gmStop').addEventListener('click', () => guardSet({ mode: 'stopped' }));
+    for (const b of document.querySelectorAll('#gDays button')) {
+      b.addEventListener('click', () => {
+        const on = b.getAttribute('aria-pressed') === 'true';
+        b.setAttribute('aria-pressed', on ? 'false' : 'true');
+        const d = Number(b.dataset.d);
+        if (on) gDaysLocal = (gDaysLocal || []).filter((x) => x !== d);
+        else gDaysLocal = [...(gDaysLocal || []), d];
+        // 连点合并：300ms 内的多次点击只发一次请求
+        if (gDaysTimer) clearTimeout(gDaysTimer);
+        gDaysTimer = setTimeout(() => {
+          gDaysTimer = null;
+          const final = gDaysLocal && gDaysLocal.length ? gDaysLocal.slice() : DAY_ORDER.slice();
+          if (!gDaysLocal || !gDaysLocal.length) gDaysLocal = final.slice();
+          guardSet({ days: final });
+        }, 300);
+      });
+    }
+    const commitTime = () => guardSet({ start: $('gStart').value, end: $('gEnd').value });
+    $('gStart').addEventListener('change', commitTime);
+    $('gEnd').addEventListener('change', commitTime);
+  }
+
+  // ---------- 状态应用 ----------
+  function applyState(s) {
+    state = s;
+    if (s.guard) renderGuard(s.guard);
+    $('sHarvest').innerHTML = (s.stats.harvest || 0) + '<small>块次</small>';
+    $('sPlant').innerHTML = (s.stats.plant || 0) + '<small>块次</small>';
+    $('sRounds').textContent = s.stats.rounds || 0;
+
+    // 自动按钮
+    const btn = $('btnAuto');
+    btn.classList.toggle('primary', !s.auto);
+    btn.classList.toggle('danger', !!s.auto);
+    $('btnAutoText').textContent = s.auto ? '停止自动' : '开启自动';
+    btn.disabled = !!s.running && !s.auto;
+    $('btnRound').disabled = !!s.running;
+
+    // 连接状态
+    $('connDot').className = 'dot ' + (s.running ? 'busy' : s.auto ? 'live' : 'off');
+    $('connText').textContent = s.running ? '执行中' : s.auto ? '自动运行' : '待机';
+    $('subtitle').textContent = s.auto
+      ? (s.dry ? '演练模式 · 不实际操作' : '自动循环运行中')
+      : '短连接模式：每次连上 1~2 秒即断开，不长期占用会话';
+
+    // 下次唤醒倒计时
+    const pill = $('nextPill');
+    if (s.nextWake && s.auto) {
+      pill.hidden = false;
+      pill.dataset.at = String(s.nextWake);
+    } else {
+      pill.hidden = true;
+    }
+
+    // 控件回填
+    $('tHarvest').setAttribute('aria-pressed', String(!!s.doHarvest));
+    $('tPlant').setAttribute('aria-pressed', String(!!s.doPlant));
+    $('tDry').setAttribute('aria-pressed', String(!!s.dry));
+    $('tAvoid').setAttribute('aria-pressed', String(!!s.avoidWindow));
+    if (document.activeElement !== $('cropSelect')) $('cropSelect').value = s.crop || '';
+    if (document.activeElement !== $('minGap')) $('minGap').value = s.minGap || 30;
+  }
+
+  function tickNext() {
+    const pill = $('nextPill');
+    if (pill.hidden) return;
+    const at = Number(pill.dataset.at || 0);
+    const left = at - (Math.floor(Date.now() / 1000) + serverSkew);
+    $('nextText').textContent = left > 0 ? '下次 ' + fmtLeft(left) + ' 后' : '即将执行…';
+  }
+
+  // ---------- 接口 ----------
+  async function api(path, opts) {
+    const r = await fetch(path, Object.assign({ headers: { 'content-type': 'application/json' }, credentials: 'same-origin' }, opts || {}));
+    if (r.status === 401) { location.replace('/login.html'); throw new Error('未登录'); }
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    return j;
+  }
+
+  async function loadSnapshot(quiet) {
+    const btn = $('btnRefresh');
+    if (!quiet) btn.disabled = true;
+    try {
+      const s = await api('/api/snapshot' + (quiet ? '?quiet=1' : ''));
+      if (!s.ok) throw new Error(s.error || '读取失败');
+      serverSkew = s.serverTime - Math.floor(Date.now() / 1000);
+      lastFetchLocal = Date.now();
+      farms = s.farms || [];
+      renderFarms();
+      renderSeeds(s.seeds);
+      renderStocks(s.crops, s.maxStock);
+      renderProduction(s.production);
+      if (s.player) {
+        $('subtitle').textContent = '角色 ' + s.player.id + ' · Lv ' + (s.player.level || '?') +
+          (s.autoFarming ? ' · 官方自动种田已开' : '');
+      }
+    } catch (e) {
+      addLog({ t: Date.now(), text: '读取状态失败: ' + e.message, level: 'error' });
+    } finally {
+      if (!quiet) btn.disabled = false;
+    }
+  }
+
+  async function runOnce() {
+    const btn = $('btnRound');
+    btn.disabled = true;
+    try {
+      const r = await api('/api/round', { method: 'POST', body: '{}' });
+      if (r.ok) await loadSnapshot();
+    } catch (e) {
+      addLog({ t: Date.now(), text: '执行失败: ' + e.message, level: 'error' });
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function setConfig(patch) {
+    try {
+      const r = await api('/api/config', { method: 'POST', body: JSON.stringify(patch) });
+      if (r.state) applyState(r.state);
+    } catch (e) {
+      addLog({ t: Date.now(), text: '设置失败: ' + e.message, level: 'error' });
+    }
+  }
+
+  // ---------- 事件绑定 ----------
+  function bindToggle(id, key) {
+    $(id).addEventListener('click', () => {
+      const cur = $(id).getAttribute('aria-pressed') === 'true';
+      $(id).setAttribute('aria-pressed', String(!cur));
+      const p = {}; p[key] = !cur; setConfig(p);
+    });
+  }
+
+  $('btnAuto').addEventListener('click', () => setConfig({ auto: !state.auto }));
+  $('btnRound').addEventListener('click', runOnce);
+  $('btnRefresh').addEventListener('click', loadSnapshot);
+  $('cropSelect').addEventListener('change', (e) => setConfig({ crop: e.target.value }));
+  $('minGap').addEventListener('change', (e) => setConfig({ minGap: Number(e.target.value) }));
+
+  bindToggle('tHarvest', 'doHarvest');
+  bindToggle('tPlant', 'doPlant');
+  bindToggle('tDry', 'dry');
+  bindToggle('tAvoid', 'avoidWindow');
+
+  // ---------- SSE ----------
+  function connectSSE() {
+    const es = new EventSource('/api/events');
+    es.onopen = () => { $('connDot').className = 'dot live'; };
+    es.onerror = () => {
+      $('connDot').className = 'dot off';
+      $('connText').textContent = '重连中…';
+    };
+    es.onmessage = (e) => {
+      try { addLog(JSON.parse(e.data)); } catch (err) { /* ignore */ }
+    };
+    es.addEventListener('state', (e) => {
+      try { applyState(JSON.parse(e.data)); } catch (err) { /* ignore */ }
+    });
+    es.addEventListener('radar', (e) => {
+      try { applyRadar(JSON.parse(e.data)); } catch (err) { /* ignore */ }
+    });
+    es.addEventListener('wreck', (e) => {
+      try { applyWreck(JSON.parse(e.data)); } catch (err) { /* ignore */ }
+    });
+  }
+
+  // ---------- 联盟情报 ----------
+  let rCfg = { dry: false, doClaim: true, doDispatch: true, types: [], fleets: [], stats: { rounds: 0, claimed: 0, dispatched: 0, errors: 0 }, eventTypes: [] };
+  let rSnap = null;
+  let allTypes = [];
+
+  const EV_STATE = { 1: '可派', 2: '锁定', 3: '进行中', 4: '待领奖' };
+  const FLEET_STATE = { 1: '空闲', 2: '行军中', 3: '战斗中', 4: '修理中', 5: '排队中' };
+
+  function renderTypeChips(types) {
+    const box = $('typeChips');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!types || !types.length) { box.innerHTML = '<span class="empty-hint">情报数据加载后出现</span>'; return; }
+    allTypes = types;
+    types.forEach((t) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip';
+      b.dataset.type = t;
+      b.setAttribute('aria-pressed', String((rCfg.types || []).includes(t)));
+      b.textContent = t;
+      b.addEventListener('click', () => {
+        const on = b.getAttribute('aria-pressed') === 'true';
+        b.setAttribute('aria-pressed', String(!on));
+        const set = new Set(rCfg.types || []);
+        if (on) set.delete(t); else set.add(t);
+        setRadarConfig({ types: [...set] });
+      });
+      box.appendChild(b);
+    });
+  }
+
+  function renderFleets(list) {
+    const box = $('fleets');
+    box.innerHTML = '';
+    if (!list || !list.length) { box.innerHTML = '<div class="empty-hint">没有舰队数据</div>'; return; }
+    list.forEach((f) => {
+      const el = document.createElement('div');
+      el.className = 'fleet' + (f.idle ? ' idle' : '');
+      const durPct = f.maxDura ? (f.durability / f.maxDura) * 100 : 100;
+      el.innerHTML =
+        '<div class="fleet-top"><span class="mono"></span><span class="st"></span></div>' +
+        '<div class="fleet-meta"></div>' +
+        '<div class="bar"><i></i></div>';
+      el.querySelector('.mono').textContent = f.id;
+      el.querySelector('.st').textContent = f.idle ? '空闲' : (FLEET_STATE[f.state] || '状态' + f.state);
+      el.querySelector('.fleet-meta').textContent = '耐久 ' + f.durability + '/' + f.maxDura + ' · 战力 ' + f.power;
+      el.querySelector('.bar > i').style.width = durPct.toFixed(0) + '%';
+      box.appendChild(el);
+    });
+  }
+
+  function renderEvents(list) {
+    const box = $('events');
+    box.innerHTML = '';
+    if (!list || !list.length) { box.innerHTML = '<div class="empty-hint">当前没有情报事件</div>'; return; }
+    const order = { 4: 0, 3: 1, 2: 2, 1: 3 };
+    list.slice().sort((a, b) => (order[a.state] - order[b.state]) || (b.color - a.color)).forEach((e) => {
+      const el = document.createElement('div');
+      el.className = 'ev' + (e.state === 4 ? ' ready' : e.state === 3 || e.state === 2 ? ' busy' : '');
+      const reqTxt = e.requirements && e.requirements.length
+        ? '需 ' + e.requirements.map((r) => r.id + '×' + r.num).join(' ') : '';
+      el.innerHTML =
+        '<div class="ev-dot c' + (e.color || 1) + '">' + (e.color || 1) + '★</div>' +
+        '<div class="ev-body">' +
+          '<div class="ev-top"><span class="nm"></span><span class="tag"></span></div>' +
+          '<div class="ev-meta"></div>' +
+          (reqTxt ? '<div class="ev-req"></div>' : '') +
+        '</div>';
+      el.querySelector('.nm').textContent = e.type;
+      el.querySelector('.tag').textContent = EV_STATE[e.state] || ('状态' + e.state);
+      el.querySelector('.ev-meta').textContent = e.eventId + ' · ' + (e.gridIdx ? '格 ' + e.gridIdx : '无坐标');
+      if (reqTxt) el.querySelector('.ev-req').textContent = reqTxt;
+      box.appendChild(el);
+    });
+  }
+
+  function applyRadar(cfg, snap) {
+    rCfg = Object.assign(rCfg, cfg || {});
+    if (snap) rSnap = snap;
+    const s = rSnap;
+
+    $('tClaim').setAttribute('aria-pressed', String(!!rCfg.doClaim));
+    $('tDispatch').setAttribute('aria-pressed', String(!!rCfg.doDispatch));
+    $('tRdry').setAttribute('aria-pressed', String(!!rCfg.dry));
+    if (rCfg.petrolCost) $('petrolCost').textContent = rCfg.petrolCost;
+    if (rCfg.eventTypes) renderTypeChips(rCfg.eventTypes);
+
+    if (!s) return;
+    const idle = (s.fleets || []).filter((f) => f.idle).length;
+    const init = (s.events || []).filter((e) => e.state === 1).length;
+    const done = (s.events || []).filter((e) => e.state === 4).length;
+
+    $('rLevel').textContent = s.level || 0;
+    $('rExp').textContent = s.exp || 0;
+    $('rInit').innerHTML = init + '<small>个</small>';
+    $('rDone').innerHTML = done + '<small>个</small>';
+    $('rIdle').innerHTML = idle + '<small>艘</small>';
+    // 情报每 8 小时刷新一批，这里显示距离下批刷新的时间
+    if (s.nextRefreshTime) {
+      const left = s.nextRefreshTime - (Math.floor(Date.now() / 1000) + serverSkew);
+      $('rRefresh').textContent = left > 0 ? fmtLeft(left) : '待刷新';
+      $('rRefresh').title = '下批情报刷新：' + fmtClock(s.nextRefreshTime);
+    } else {
+      $('rRefresh').textContent = '—';
+    }
+    $('petrolHint').textContent = '汽油 ' + (s.petrol != null ? s.petrol : '?');
+    $('radarHint').textContent = s.events ? '共 ' + s.events.length + ' 个事件' : '';
+
+    const badge = $('radarBadge');
+    if (done > 0) { badge.hidden = false; badge.textContent = done; } else badge.hidden = true;
+
+    renderFleets(s.fleets);
+    renderEvents(s.events);
+  }
+
+  async function loadRadar(quiet) {
+    const btn = $('btnRadarRefresh');
+    if (!quiet) btn.disabled = true;
+    try {
+      const d = await api('/api/radar?refresh=1' + (quiet ? '&quiet=1' : ''));
+      if (!d.ok) throw new Error(d.error || '读取失败');
+      applyRadar(d.cfg, d);
+    } catch (e) {
+      addLog({ t: Date.now(), text: '读取情报失败: ' + e.message, level: 'error' });
+    } finally {
+      if (!quiet) btn.disabled = false;
+    }
+  }
+
+  async function radarRunOnce() {
+    const btn = $('btnRadarRound');
+    btn.disabled = true;
+    try {
+      const r = await api('/api/radar/round', { method: 'POST', body: '{}' });
+      if (r.ok) await loadRadar(true);
+    } catch (e) {
+      addLog({ t: Date.now(), text: '情报执行失败: ' + e.message, level: 'error' });
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function setRadarConfig(patch) {
+    try {
+      const r = await api('/api/radar/config', { method: 'POST', body: JSON.stringify(patch) });
+      if (r.cfg) applyRadar(r.cfg);
+    } catch (e) {
+      addLog({ t: Date.now(), text: '情报设置失败: ' + e.message, level: 'error' });
+    }
+  }
+
+  function bindRadarToggle(id, key) {
+    $(id).addEventListener('click', () => {
+      const cur = $(id).getAttribute('aria-pressed') === 'true';
+      $(id).setAttribute('aria-pressed', String(!cur));
+      const p = {}; p[key] = !cur; setRadarConfig(p);
+    });
+  }
+
+  $('btnRadarRound').addEventListener('click', radarRunOnce);
+  $('btnRadarRefresh').addEventListener('click', () => loadRadar(false));
+  bindRadarToggle('tClaim', 'doClaim');
+  bindRadarToggle('tDispatch', 'doDispatch');
+  bindRadarToggle('tRdry', 'dry');
+
+  // ---------- 搁浅的货轮 ----------
+  let wCfg = { dry: false, colors: [5, 4, 3], minDuraRatio: 1, doRepair: true, doDispatch: true, maxPerWreck: 3, stats: {}, colorNames: {} };
+  let wSnap = null;
+  const WRECK_COLORS = [
+    { v: 5, name: '万吨货轮' },
+    { v: 4, name: '中型货轮' },
+    { v: 3, name: '小型货轮' },
+  ];
+
+  function renderColorChips() {
+    const box = $('colorChips');
+    if (!box) return;
+    box.innerHTML = '';
+    WRECK_COLORS.forEach((c) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip';
+      b.setAttribute('aria-pressed', String((wCfg.colors || []).includes(c.v)));
+      b.textContent = c.name;
+      b.addEventListener('click', () => {
+        const on = b.getAttribute('aria-pressed') === 'true';
+        b.setAttribute('aria-pressed', String(!on));
+        const set = new Set(wCfg.colors || []);
+        if (on) set.delete(c.v); else set.add(c.v);
+        setWreckConfig({ colors: [...set] });
+      });
+      box.appendChild(b);
+    });
+  }
+
+  function renderWFleets(list) {
+    const box = $('wFleetsBox');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!list || !list.length) { box.innerHTML = '<div class="empty-hint">没有舰队数据</div>'; return; }
+    list.forEach((f) => {
+      const cls = f.state === 4 ? ' rep' : f.homeIdle ? ' home' : ' busy';
+      const el = document.createElement('div');
+      el.className = 'wfleet' + cls;
+      const durPct = f.maxDura ? (f.durability / f.maxDura) * 100 : 100;
+      el.innerHTML =
+        '<div class="wfleet-top"><span class="mono"></span><span class="st"></span></div>' +
+        '<div class="wfleet-meta"></div>' +
+        '<div class="bar"><i></i></div>';
+      el.querySelector('.mono').textContent = f.id;
+      el.querySelector('.st').textContent = f.stateName;
+      let meta = '耐久 ' + f.durability + '/' + f.maxDura + ' · 战力 ' + f.power;
+      if (f.treasureLootUid) meta += ' · 占领货轮 #' + f.treasureLootUid;
+      if (f.repairing && f.repairing.endTs) {
+        const left = f.repairing.endTs - (Math.floor(Date.now() / 1000) + serverSkew);
+        if (left > 0) meta += ' · 还需 ' + fmtLeft(left);
+      }
+      el.querySelector('.wfleet-meta').textContent = meta;
+      el.querySelector('.bar > i').style.width = Math.max(0, Math.min(100, durPct)).toFixed(0) + '%';
+      box.appendChild(el);
+    });
+  }
+
+  // ---------- 货轮奖励悬浮卡 ----------
+  function wreckPopEl() { return $('wreckPop'); }
+
+  function fillWreckPop(w) {
+    const pop = wreckPopEl();
+    if (!pop) return;
+    pop.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'pop-head';
+    const nm = document.createElement('span');
+    nm.textContent = w.colorName + ' #' + w.uid;
+    const q = document.createElement('span');
+    q.className = 'pop-q';
+    q.textContent = '进度 ' + w.progress + '%';
+    head.appendChild(nm);
+    head.appendChild(q);
+    pop.appendChild(head);
+
+    const rs = w.reward || [];
+    if (!rs.length) {
+      const e = document.createElement('div');
+      e.className = 'pop-empty';
+      e.textContent = '（这条货轮没有奖励信息）';
+      pop.appendChild(e);
+      return;
+    }
+    rs.forEach((r) => {
+      const row = document.createElement('div');
+      row.className = 'pop-row' + (r.id === '紫芯片宝箱' ? ' is-gold' : '');
+      const a = document.createElement('span');
+      a.className = 'pop-nm';
+      a.textContent = r.id;
+      const b = document.createElement('span');
+      b.className = 'pop-num';
+      b.textContent = '×' + r.num;
+      row.appendChild(a);
+      row.appendChild(b);
+      pop.appendChild(row);
+    });
+    // 结算规则提示
+    const tip = document.createElement('div');
+    tip.className = 'pop-empty';
+    tip.style.marginTop = '7px';
+    tip.style.paddingTop = '7px';
+    tip.style.borderTop = '1px solid var(--border-soft)';
+    tip.textContent = '进度 100% 结算 · 前 5 名有奖 · 每日上限 3 次';
+    pop.appendChild(tip);
+  }
+
+  function placeWreckPop(anchorEl) {
+    const pop = wreckPopEl();
+    if (!pop) return;
+    const r = anchorEl.getBoundingClientRect();
+    pop.style.left = '0px';
+    pop.style.top = '0px';
+    pop.classList.add('show');
+    const pw = pop.offsetWidth;
+    const ph = pop.offsetHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let left = r.left;
+    if (left + pw > vw - 8) left = Math.max(8, vw - pw - 8);
+    // 优先显示在卡片上方，放不下就放下方
+    let top = r.top - ph - 8;
+    if (top < 8) top = Math.min(vh - ph - 8, r.bottom + 8);
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+  }
+
+  function hideWreckPop() {
+    const pop = wreckPopEl();
+    if (!pop) return;
+    pop.classList.remove('show');
+    pop.setAttribute('aria-hidden', 'true');
+  }
+
+  function bindWreckPop(el, w) {
+    let pinned = false; // 点击「钉住」后不再跟着 mouseleave 消失（触屏用）
+    const show = () => {
+      fillWreckPop(w);
+      placeWreckPop(el);
+      const p = wreckPopEl();
+      p.dataset.uid = String(w.uid);
+      p.setAttribute('aria-hidden', 'false');
+    };
+    const sameShown = () => {
+      const p = wreckPopEl();
+      return !!(p && p.classList.contains('show') && p.dataset.uid === String(w.uid));
+    };
+    el.addEventListener('mouseenter', () => { if (!pinned) show(); });
+    el.addEventListener('focus', () => { if (!pinned) show(); });
+    el.addEventListener('mouseleave', () => { if (!pinned) hideWreckPop(); });
+    el.addEventListener('blur', () => { if (!pinned) hideWreckPop(); });
+    // 点击切换：触屏没有 hover，点一下显示，再点一下收起
+    el.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const same = sameShown();
+      if (same) {
+        pinned = false;
+        hideWreckPop();
+      } else {
+        pinned = true;
+        show();
+      }
+    });
+  }
+
+  // 点空白处 / 按 Esc 收起钉住的悬浮卡
+  function collapseWreckPop() {
+    hideWreckPop();
+    const box = $('wrecks');
+    if (box) [...box.querySelectorAll('.wreck')].forEach((el) => el.blur());
+  }
+  document.addEventListener('click', (ev) => {
+    const pop = wreckPopEl();
+    if (!pop || !pop.classList.contains('show')) return;
+    if (ev.target.closest && ev.target.closest('#wrecks')) return;
+    collapseWreckPop();
+  });
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') collapseWreckPop();
+  });
+
+  function renderWrecks(list) {
+    const box = $('wrecks');
+    if (!box) return;
+    hideWreckPop();
+    box.innerHTML = '';
+    if (!list || !list.length) { box.innerHTML = '<div class="empty-hint">当前没有货轮</div>'; return; }
+    list.forEach((w) => {
+      const el = document.createElement('div');
+      el.className = 'wreck c' + w.color + (w.mine ? ' mine' : '');
+      el.tabIndex = 0;
+      el.innerHTML =
+        '<div class="wreck-top"><span class="nm"></span><span class="uid mono"></span><span class="num"></span></div>' +
+        '<div class="wreck-meta"></div>' +
+        '<div class="bar"><i></i></div>';
+      el.querySelector('.nm').textContent = w.colorName;
+      el.querySelector('.uid').textContent = '#' + w.uid;
+      el.querySelector('.num').textContent = '进度 ' + w.progress + '%';
+      let meta = (w.ownerGuildIdx > 0 ? '联盟 ' + w.ownerGuildIdx + ' 占 ' + w.ownerFleetNum + ' 艘' : '无人占领');
+      if (w.mine) meta += ' · 我在 ' + w.myFleets.join('/');
+      const nRew = (w.reward || []).length;
+      if (nRew) meta += ' · 奖励 ' + nRew + ' 项';
+      el.querySelector('.wreck-meta').textContent = meta;
+      el.querySelector('.bar > i').style.width = Math.max(0, Math.min(100, w.progress)).toFixed(0) + '%';
+      bindWreckPop(el, w);
+      box.appendChild(el);
+    });
+  }
+
+  // 滚动 / 缩放时重新定位，避免悬浮卡飘走
+  window.addEventListener('scroll', () => {
+    const pop = wreckPopEl();
+    if (pop && pop.classList.contains('show')) hideWreckPop();
+  }, true);
+
+  function applyWreck(cfg, snap) {
+    wCfg = Object.assign(wCfg, cfg || {});
+    if (snap) wSnap = snap;
+    const s = wSnap;
+
+    $('tWRepair').setAttribute('aria-pressed', String(!!wCfg.doRepair));
+    $('tWDispatch').setAttribute('aria-pressed', String(!!wCfg.doDispatch));
+    $('tWdry').setAttribute('aria-pressed', String(!!wCfg.dry));
+    $('wDura').value = String(wCfg.minDuraRatio != null ? wCfg.minDuraRatio : 1);
+    $('wMax').value = String(wCfg.maxPerWreck || 3);
+    renderColorChips();
+
+    if (!s) return;
+    const cnt = (c) => ((s.stats || []).find((x) => x.color === c) || {}).count || 0;
+    $('wOrange').innerHTML = cnt(5) + '<small>条</small>';
+    $('wPurple').innerHTML = cnt(4) + '<small>条</small>';
+    $('wBlue').innerHTML = cnt(3) + '<small>条</small>';
+    $('wTimes').innerHTML = (s.todayRewardTimes || 0) + '<small>/' + (s.totalRewardTimes || 0) + '次</small>';
+    const mine = (s.fleets || []).filter((f) => f.treasureLootUid).length;
+    $('wFleets').innerHTML = mine + '<small>艘在外</small>';
+    if (s.nextRefreshTime) {
+      const left = s.nextRefreshTime - (Math.floor(Date.now() / 1000) + serverSkew);
+      $('wRefresh').textContent = left > 0 ? fmtLeft(left) : '待刷新';
+      $('wRefresh').title = '下批货轮刷新：' + fmtClock(s.nextRefreshTime);
+    } else $('wRefresh').textContent = '—';
+
+    $('wFleetHint').textContent = '剩余奖励次数 ' + (s.rewardLeft != null ? s.rewardLeft : '?');
+    $('wHint').textContent = s.wrecks ? '共 ' + s.wrecks.length + ' 条' : '';
+
+    const badge = $('wreckBadge');
+    const free = (s.wrecks || []).filter((w) => w.roomLeft > 0 && (wCfg.colors || []).includes(w.color)).length;
+    if (free > 0) { badge.hidden = false; badge.textContent = free; } else badge.hidden = true;
+
+    renderWFleets(s.fleets);
+    renderWrecks(s.wrecks);
+    renderWreckAuto();
+  }
+
+  // 循环出兵按钮状态 + 下次唤醒倒计时
+  function renderWreckAuto() {
+    const btn = $('btnWreckAuto');
+    const txt = $('btnWreckAutoText');
+    const on = !!(wCfg && wCfg.auto);
+    if (btn) {
+      btn.classList.toggle('danger', on);
+      btn.setAttribute('aria-pressed', String(on));
+    }
+    if (txt) txt.textContent = on ? '停止循环' : '循环出兵';
+    const hint = $('wHint');
+    if (!hint) return;
+    const s = wSnap;
+    const base = s && s.wrecks ? '共 ' + s.wrecks.length + ' 条' : '';
+    let extra = '';
+    if (on && wCfg.nextWake) {
+      const left = wCfg.nextWake - (Math.floor(Date.now() / 1000) + serverSkew);
+      extra = ' · 循环中，下次 ' + (left > 0 ? fmtLeft(left) : '马上');
+    } else if (on) {
+      extra = ' · 循环中';
+    } else if (wCfg.stopReason === 'gone') {
+      extra = ' · 上次循环：货轮已消失';
+    } else if (wCfg.stopReason === 'no-reward') {
+      extra = ' · 上次循环：奖励次数已用完';
+    }
+    hint.textContent = base + extra;
+  }
+
+  async function loadWreck(quiet) {
+    const btn = $('btnWreckRefresh');
+    if (!quiet) btn.disabled = true;
+    try {
+      const d = await api('/api/wreck?refresh=1' + (quiet ? '&quiet=1' : ''));
+      if (!d.ok) throw new Error(d.error || '读取失败');
+      applyWreck(d.cfg, d);
+    } catch (e) {
+      addLog({ t: Date.now(), text: '读取货轮失败: ' + e.message, level: 'error' });
+    } finally {
+      if (!quiet) btn.disabled = false;
+    }
+  }
+
+  async function wreckRunOnce() {
+    const btn = $('btnWreckRound');
+    btn.disabled = true;
+    try {
+      const r = await api('/api/wreck/round', { method: 'POST', body: '{}' });
+      if (r.ok) await loadWreck(true);
+    } catch (e) {
+      addLog({ t: Date.now(), text: '货轮执行失败: ' + e.message, level: 'error' });
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function setWreckConfig(patch) {
+    try {
+      const r = await api('/api/wreck/config', { method: 'POST', body: JSON.stringify(patch) });
+      if (r.cfg) applyWreck(r.cfg);
+    } catch (e) {
+      addLog({ t: Date.now(), text: '货轮设置失败: ' + e.message, level: 'error' });
+    }
+  }
+
+  // 循环出兵开关
+  async function toggleWreckAuto() {
+    const on = !!(wCfg && wCfg.auto);
+    const btn = $('btnWreckAuto');
+    btn.disabled = true;
+    try {
+      await setWreckConfig({ auto: !on });
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function bindWreckToggle(id, key) {
+    $(id).addEventListener('click', () => {
+      const cur = $(id).getAttribute('aria-pressed') === 'true';
+      $(id).setAttribute('aria-pressed', String(!cur));
+      const p = {}; p[key] = !cur; setWreckConfig(p);
+    });
+  }
+
+  $('btnWreckAuto').addEventListener('click', toggleWreckAuto);
+  $('btnWreckRound').addEventListener('click', wreckRunOnce);
+  $('btnWreckRefresh').addEventListener('click', () => loadWreck(false));
+  bindWreckToggle('tWRepair', 'doRepair');
+  bindWreckToggle('tWDispatch', 'doDispatch');
+  bindWreckToggle('tWdry', 'dry');
+  $('wDura').addEventListener('change', () => setWreckConfig({ minDuraRatio: Number($('wDura').value) }));
+  $('wMax').addEventListener('change', () => setWreckConfig({ maxPerWreck: Number($('wMax').value) }));
+
+  // ---------- 页签切换 ----------
+  const TABS = ['farm', 'radar', 'wreck', 'logs', 'about'];
+  const loadedOnce = { farm: true, radar: false, wreck: false, logs: false, about: false };
+  function selectTab(which) {
+    TABS.forEach((k) => {
+      const cap = k.charAt(0).toUpperCase() + k.slice(1);
+      $('tab' + cap).setAttribute('aria-selected', String(k === which));
+      $('pane' + cap).hidden = k !== which;
+    });
+    if (!loadedOnce[which]) {
+      loadedOnce[which] = true;
+      if (which === 'radar') loadRadar(false);
+      if (which === 'wreck') loadWreck(false);
+      if (which === 'logs') loadLogIndex();
+      if (which === 'about') loadVersion();
+    }
+  }
+  $('tabFarm').addEventListener('click', () => selectTab('farm'));
+  $('tabRadar').addEventListener('click', () => selectTab('radar'));
+  $('tabWreck').addEventListener('click', () => selectTab('wreck'));
+  $('tabLogs').addEventListener('click', () => selectTab('logs'));
+  $('tabAbout').addEventListener('click', () => selectTab('about'));
+
+  // ---------- 关于 / 在线更新 ----------
+  let versionInfo = null;
+  let updateInfo = null;
+
+  async function loadVersion() {
+    try {
+      const v = await api('/api/version');
+      versionInfo = v;
+      $('abVer').textContent = v.version || '—';
+      $('abNode').textContent = (v.node || '') + (v.platform ? ' · ' + v.platform : '');
+      $('abRepo').textContent = (v.repo || '') + ' @ ' + (v.branch || '');
+      $('abNotes').textContent = v.notes || '—';
+    } catch (e) {
+      addLog({ t: Date.now(), text: '读取版本失败: ' + e.message, level: 'error' });
+    }
+  }
+
+  async function checkUpdate() {
+    const btn = $('btnCheckUpdate');
+    btn.disabled = true;
+    $('abState').textContent = '检查中…';
+    try {
+      const r = await api('/api/update/check');
+      updateInfo = r;
+      $('abLatest').textContent = r.latest || '—';
+      if (r.hasUpdate) {
+        $('abState').innerHTML = '<span style="color:var(--amber)">有新版可用</span>';
+        $('btnApplyUpdate').disabled = false;
+      } else {
+        $('abState').innerHTML = '<span style="color:var(--accent)">已是最新</span>';
+        $('btnApplyUpdate').disabled = true;
+      }
+      if (r.notes) $('abNotes').textContent = r.notes;
+    } catch (e) {
+      $('abState').innerHTML = '<span style="color:var(--danger)">检查失败</span>';
+      addLog({ t: Date.now(), text: '检查更新失败: ' + e.message, level: 'error' });
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function applyUpdate() {
+    if (!updateInfo || !updateInfo.hasUpdate) return;
+    if (!confirm(`确认更新到 ${updateInfo.latest}？更新完成后服务会自动重启，当前页面会短暂断开。`)) return;
+    const btn = $('btnApplyUpdate');
+    btn.disabled = true;
+    $('abState').textContent = '下载中…';
+    try {
+      const r = await api('/api/update/apply', { method: 'POST', body: '{}' });
+      if (r.ok) {
+        $('abState').innerHTML = '<span style="color:var(--accent)">已更新，正在重启…</span>';
+        addLog({ t: Date.now(), text: `已更新 ${r.from} → ${r.to}，服务重启中`, level: 'ok' });
+        setTimeout(() => location.reload(), 5000);
+      }
+    } catch (e) {
+      $('abState').innerHTML = '<span style="color:var(--danger)">更新失败</span>';
+      addLog({ t: Date.now(), text: '更新失败: ' + e.message, level: 'error' });
+      btn.disabled = false;
+    }
+  }
+
+  $('btnCheckUpdate').addEventListener('click', checkUpdate);
+  $('btnApplyUpdate').addEventListener('click', applyUpdate);
+
+  // ---------- 日志面板 ----------
+  let logFiles = [];
+  let logRawLines = [];
+
+  function fmtLogLine(line) {
+    // 2026-11-26 14:14:14.648 [fatal] xxx
+    const m = line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}) \[(\w+)\] ([\s\S]*)$/);
+    if (!m) return null;
+    return { t: m[1], level: m[2], msg: m[3] };
+  }
+
+  function renderFileLog(lines) {
+    logRawLines = lines;
+    const box = $('fileLog');
+    box.innerHTML = '';
+    const onlyFatal = $('tOnlyFatal').getAttribute('aria-pressed') === 'true';
+    const shown = onlyFatal ? lines.filter((l) => l.includes('[fatal]')) : lines;
+    if (!shown.length) {
+      const e = document.createElement('span');
+      e.className = 'empty-hint';
+      e.textContent = onlyFatal ? '这一天没有崩溃记录（[fatal]）' : '没有日志内容';
+      box.appendChild(e);
+      $('logFileCount').textContent = '';
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    for (const raw of shown) {
+      const p = fmtLogLine(raw);
+      const ln = document.createElement('div');
+      ln.className = 'fl';
+      if (p) {
+        const lv = p.level.toLowerCase();
+        if (lv === 'fatal') ln.classList.add('fatal');
+        else if (lv === 'error') ln.classList.add('err');
+        else if (lv === 'warn') ln.classList.add('warn');
+        else if (lv === 'ok') ln.classList.add('ok');
+        ln.textContent = `${p.t} ${p.msg}`;
+      } else {
+        ln.textContent = raw;
+      }
+      frag.appendChild(ln);
+    }
+    box.appendChild(frag);
+    // 默认滚到底，方便看最后发生了什么
+    box.scrollTop = box.scrollHeight;
+    $('logFileCount').textContent = shown.length + ' 行' +
+      (onlyFatal ? `（共 ${lines.length} 行）` : '');
+  }
+
+  async function loadLogIndex() {
+    try {
+      const r = await api('/api/logs');
+      logFiles = r.files || [];
+      const sel = $('logDate');
+      sel.innerHTML = '';
+      if (!logFiles.length) {
+        const o = document.createElement('option');
+        o.value = ''; o.textContent = '（还没有日志文件）';
+        sel.appendChild(o);
+        renderFileLog([]);
+        return;
+      }
+      for (const f of logFiles) {
+        const o = document.createElement('option');
+        o.value = f.replace(/^server-|\.log$/g, '');
+        o.textContent = f.replace(/^server-|\.log$/g, '') + (o.value === r.today ? '（今天）' : '');
+        sel.appendChild(o);
+      }
+      $('logFileHint').textContent = logFiles.length + ' 个文件 · 保留 14 天';
+      await loadLogFile();
+    } catch (e) {
+      addLog({ t: Date.now(), text: '读取日志列表失败: ' + e.message, level: 'error' });
+    }
+  }
+
+  async function loadLogFile() {
+    const date = $('logDate').value;
+    if (!date) return;
+    const lines = $('logLines').value;
+    try {
+      const r = await api('/api/logs?date=' + encodeURIComponent(date) + '&lines=' + lines);
+      renderFileLog(r.lines || []);
+      if (r.fatal && r.fatal.length) {
+        $('logFileHint').textContent = `${date} · 共 ${r.total} 行 · 含 ${r.fatal.length} 条崩溃记录`;
+      } else {
+        $('logFileHint').textContent = `${date} · 共 ${r.total} 行 · 无崩溃记录`;
+      }
+    } catch (e) {
+      renderFileLog([]);
+      $('fileLog').innerHTML = '';
+      const el = document.createElement('span');
+      el.className = 'empty-hint';
+      el.textContent = e.message;
+      $('fileLog').appendChild(el);
+    }
+  }
+
+  $('btnLogLoad').addEventListener('click', loadLogFile);
+  $('logDate').addEventListener('change', loadLogFile);
+  $('logLines').addEventListener('change', loadLogFile);
+  $('tOnlyFatal').addEventListener('click', () => {
+    const b = $('tOnlyFatal');
+    b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+    renderFileLog(logRawLines);
+  });
+  $('btnLogDownload').addEventListener('click', () => {
+    const date = $('logDate').value;
+    if (!date) return;
+    const blob = new Blob([logRawLines.join('\n')], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'server-' + date + '.log';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  });
+
+  // ---------- 启动 ----------
+  initGuard();
+  loadSnapshot();
+  connectSSE();
+  fetch('/api/status').then((r) => r.json()).then((d) => { if (d.state) applyState(d.state); }).catch(() => {});
+
+  setInterval(updateFarms, 1000);
+  setInterval(tickNext, 1000);
+  // 每 60 秒自动刷新一次状态，保证倒计时基准不漂
+  setInterval(() => loadSnapshot(true), 60000);
+})();
+</script>
+
+<div id="wreckPop" class="wreck-pop" role="tooltip" aria-hidden="true"></div>
+</body>
+</html>

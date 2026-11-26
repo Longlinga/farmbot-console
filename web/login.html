@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>登录 · 疯狂水世界 控制台</title>
+<style>
+  :root{
+    --bg:#020617; --card:#0E1223; --card2:#131A2E; --border:#253048;
+    --text:#E8EDF7; --muted:#8B98B4; --dim:#5C6884;
+    --accent:#16A34A; --accent-dim:#0E7A38; --danger:#DC2626; --amber:#F59E0B;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:"Fira Sans","Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    display:flex; align-items:center; justify-content:center; padding:24px;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none;
+    background:
+      radial-gradient(60% 45% at 50% 0%, rgba(22,163,74,.13), transparent 70%),
+      radial-gradient(45% 40% at 85% 100%, rgba(37,48,72,.55), transparent 70%);
+  }
+  .wrap{position:relative; width:100%; max-width:392px}
+  .brand{display:flex; align-items:center; gap:12px; margin-bottom:22px}
+  .logo{
+    width:42px;height:42px;border-radius:12px; flex:0 0 auto;
+    background:linear-gradient(160deg,#22C55E,#0E7A38);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 6px 18px rgba(22,163,74,.28);
+  }
+  .logo svg{width:22px;height:22px}
+  .brand h1{font-size:17.5px;margin:0;font-weight:600;letter-spacing:.2px}
+  .brand p{margin:3px 0 0;font-size:12.5px;color:var(--dim)}
+
+  .card{
+    background:linear-gradient(180deg,var(--card2),var(--card));
+    border:1px solid var(--border); border-radius:16px; padding:26px 22px 22px;
+    box-shadow:0 18px 50px rgba(0,0,0,.45);
+  }
+  label{display:block; font-size:12.5px; color:var(--muted); margin:0 0 7px}
+  .field{margin-bottom:16px}
+  input[type=text],input[type=password]{
+    width:100%; padding:12px 13px; font-size:14.5px; font-family:inherit;
+    color:var(--text); background:#080D1B; border:1px solid var(--border);
+    border-radius:10px; outline:none; transition:border-color .15s, box-shadow .15s;
+  }
+  input::placeholder{color:#495571}
+  input:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(22,163,74,.16)}
+  input:disabled{opacity:.6}
+  .row{display:flex; align-items:center; justify-content:space-between; gap:10px}
+  .chk{display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--muted); cursor:pointer; user-select:none}
+  .chk input{accent-color:var(--accent); width:14px; height:14px; margin:0}
+
+  button{
+    width:100%; margin-top:20px; padding:12px 14px; font-family:inherit; font-size:14.5px; font-weight:600;
+    color:#04170b; background:linear-gradient(180deg,#22C55E,#149944);
+    border:0; border-radius:10px; cursor:pointer;
+    transition:filter .15s, transform .06s;
+  }
+  button:hover{filter:brightness(1.07)}
+  button:active{transform:translateY(1px)}
+  button:disabled{filter:grayscale(.5) brightness(.8); cursor:not-allowed; transform:none}
+  button[data-ghost]{
+    background:transparent; color:var(--muted); border:1px solid var(--border);
+    font-weight:500; margin-top:10px;
+  }
+  button[data-ghost]:hover{color:var(--text); border-color:#33405c}
+
+  .msg{
+    margin-top:14px; padding:9px 11px; border-radius:9px; font-size:12.5px; line-height:1.5;
+    border:1px solid transparent; display:none;
+  }
+  .msg.show{display:block}
+  .msg.err{color:#FCA5A5; background:rgba(220,38,38,.1); border-color:rgba(220,38,38,.35)}
+  .msg.ok{color:#86EFAC; background:rgba(22,163,74,.1); border-color:rgba(22,163,74,.35)}
+
+  .foot{margin-top:18px; text-align:center; font-size:11.5px; color:var(--dim); line-height:1.7}
+  .foot code{background:#0A0F1E; border:1px solid var(--border); border-radius:4px; padding:1px 5px; font-size:11px}
+
+  .setup{margin-top:4px; padding:12px 13px; border-radius:10px; font-size:12.5px; line-height:1.65;
+    color:#FCD34D; background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.3)}
+  .setup b{color:#FDE68A}
+  @media (max-width:420px){
+    body{padding:16px}
+    .card{padding:22px 17px 18px; border-radius:14px}
+    .brand h1{font-size:16px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#04170b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 21V9"/><path d="M12 9c0-3 2-5 5-5 0 3-2 5-5 5Z"/><path d="M12 13c0-3-2-5-5-5 0 3 2 5 5 5Z"/>
+      </svg>
+    </div>
+    <div>
+      <h1>疯狂水世界 控制台</h1>
+      <p>需要登录后才能操作</p>
+    </div>
+  </div>
+
+  <form class="card" id="form" autocomplete="on">
+    <div id="setup" class="setup" hidden></div>
+
+    <div class="field">
+      <label for="user">账号</label>
+      <input type="text" id="user" name="username" autocomplete="username" placeholder="用户名" required>
+    </div>
+    <div class="field">
+      <label for="pass">密码</label>
+      <input type="password" id="pass" name="password" autocomplete="current-password" placeholder="密码" required>
+    </div>
+
+    <div class="row">
+      <label class="chk"><input type="checkbox" id="remember" checked> 记住我（7 天）</label>
+    </div>
+
+    <button type="submit" id="btn">登 录</button>
+    <div class="msg" id="msg" role="alert" aria-live="polite"></div>
+
+    <div class="foot">
+      首次部署：在服务器上运行 <code>node server.js</code> 会在控制台打印初始账号密码，<br>
+      或设置环境变量 <code>FARMBOT_USER</code> / <code>FARMBOT_PASS</code> 指定。
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const form = $('form'), msg = $('msg'), btn = $('btn');
+  const userEl = $('user'), passEl = $('pass'), rememberEl = $('remember');
+
+  // 若已经登录，直接跳控制台
+  fetch('/api/session', { credentials: 'same-origin' })
+    .then((r) => r.json())
+    .then((d) => {
+      if (d && d.loggedIn) location.replace('/');
+      if (d && d.firstRun) {
+        const box = $('setup');
+        box.hidden = false;
+        box.innerHTML = '检测到首次部署，还没有账号。<b>默认账号 admin</b>，密码见服务器启动日志（或环境变量 FARMBOT_PASS）。';
+        userEl.value = 'admin';
+      }
+    })
+    .catch(() => {});
+
+  function show(text, kind) {
+    msg.textContent = text;
+    msg.className = 'msg show ' + (kind || 'err');
+  }
+
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const user = userEl.value.trim();
+    const pass = passEl.value;
+    if (!user || !pass) return show('请填写账号和密码');
+
+    btn.disabled = true;
+    msg.className = 'msg';
+    try {
+      const r = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ user, pass, remember: rememberEl.checked }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j.ok) {
+        show('登录成功，正在进入…', 'ok');
+        location.replace('/');
+        return;
+      }
+      show(j.error || ('登录失败（HTTP ' + r.status + '）'));
+      passEl.value = '';
+      passEl.focus();
+    } catch (e) {
+      show('网络错误：' + e.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  userEl.focus();
+})();
+</script>
+</body>
+</html>

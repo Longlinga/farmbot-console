@@ -1,0 +1,151 @@
+{
+ "data": [
+  {
+   "id": "小麦",
+   "time": 1800,
+   "produceNum": 5,
+   "res": "Wheat",
+   "material": [
+    "小麦种子",
+    1
+   ]
+  },
+  {
+   "id": "玉米",
+   "time": 1800,
+   "produceNum": 5,
+   "res": "Corn",
+   "material": [
+    "玉米种子",
+    1
+   ]
+  },
+  {
+   "id": "土豆",
+   "time": 2400,
+   "produceNum": 5,
+   "res": "Potato",
+   "material": [
+    "土豆种子",
+    1
+   ]
+  },
+  {
+   "id": "番茄",
+   "time": 2400,
+   "produceNum": 5,
+   "res": "Tomato",
+   "material": [
+    "番茄种子",
+    1
+   ]
+  },
+  {
+   "id": "胡萝卜",
+   "time": 3600,
+   "produceNum": 5,
+   "res": "Carrot",
+   "material": [
+    "胡萝卜种子",
+    1
+   ]
+  },
+  {
+   "id": "卷心菜",
+   "time": 3600,
+   "produceNum": 5,
+   "res": "Cabbage",
+   "material": [
+    "卷心菜种子",
+    1
+   ]
+  },
+  {
+   "id": "大豆",
+   "time": 4800,
+   "produceNum": 5,
+   "res": "Soybean",
+   "material": [
+    "大豆种子",
+    1
+   ]
+  },
+  {
+   "id": "南瓜",
+   "time": 4800,
+   "produceNum": 5,
+   "res": "Pumpkin",
+   "material": [
+    "南瓜种子",
+    1
+   ]
+  },
+  {
+   "id": "辣椒",
+   "time": 6000,
+   "produceNum": 5,
+   "res": "Chili",
+   "material": [
+    "辣椒种子",
+    1
+   ]
+  },
+  {
+   "id": "茄子",
+   "time": 6000,
+   "produceNum": 5,
+   "res": "Eggplant",
+   "material": [
+    "茄子种子",
+    1
+   ]
+  },
+  {
+   "id": "花菜",
+   "time": 7200,
+   "produceNum": 5,
+   "res": "Cauliflower",
+   "material": [
+    "花菜种子",
+    1
+   ]
+  },
+  {
+   "id": "可可豆",
+   "time": 7200,
+   "produceNum": 5,
+   "res": "Cacao",
+   "material": [
+    "可可豆种子",
+    1
+   ]
+  },
+  {
+   "id": "橡胶",
+   "time": 15600,
+   "produceNum": 5,
+   "res": "Rubber",
+   "material": [
+    "橡胶种子",
+    1
+   ]
+  }
+ ],
+ "index": {
+  "id": {
+   "小麦": 0,
+   "玉米": 1,
+   "土豆": 2,
+   "番茄": 3,
+   "胡萝卜": 4,
+   "卷心菜": 5,
+   "大豆": 6,
+   "南瓜": 7,
+   "辣椒": 8,
+   "茄子": 9,
+   "花菜": 10,
+   "可可豆": 11,
+   "橡胶": 12
+  }
+ }
+}

@@ -1,0 +1,163 @@
+{
+ "data": [
+  {
+   "paramName": "资源地初始占领数量",
+   "paramValue": 10
+  },
+  {
+   "paramName": "对战间隔",
+   "paramValue": 3
+  },
+  {
+   "paramName": "一般行军速度",
+   "paramValue": 80
+  },
+  {
+   "paramName": "攻城行军速度",
+   "paramValue": 40
+  },
+  {
+   "paramName": "野怪行军速度",
+   "paramValue": 600
+  },
+  {
+   "paramName": "打地行军速度",
+   "paramValue": 300
+  },
+  {
+   "paramName": "世界BOSS行军速度",
+   "paramValue": 600
+  },
+  {
+   "paramName": "情报行军速度",
+   "paramValue": 1000
+  },
+  {
+   "paramName": "行军加速消耗",
+   "paramValue": 30
+  },
+  {
+   "paramName": "集结要求耐久",
+   "paramValue": 1000
+  },
+  {
+   "paramName": "远征船默认耐久",
+   "paramValue": 2000
+  },
+  {
+   "paramName": "打野怪消耗耐久",
+   "paramValue": 0
+  },
+  {
+   "paramName": "攻城战消耗耐久",
+   "paramValue": 100
+  },
+  {
+   "paramName": "资源地消耗耐久",
+   "paramValue": 0
+  },
+  {
+   "paramName": "进攻首领消耗耐久",
+   "paramValue": 0
+  },
+  {
+   "paramName": "打野怪消耗汽油",
+   "paramValue": 300
+  },
+  {
+   "paramName": "资源地消耗汽油",
+   "paramValue": 300
+  },
+  {
+   "paramName": "进攻首领消耗汽油",
+   "paramValue": 300
+  },
+  {
+   "paramName": "进攻宝藏消耗汽油",
+   "paramValue": 500
+  },
+  {
+   "paramName": "情报事件消耗汽油",
+   "paramValue": 500
+  },
+  {
+   "paramName": "采集硅矿消耗汽油",
+   "paramValue": 500
+  },
+  {
+   "paramName": "尾刀BOSS消耗汽油",
+   "paramValue": 500
+  },
+  {
+   "paramName": "耐久维修消耗资源",
+   "paramValue": 6
+  },
+  {
+   "paramName": "耐久维修消耗时间",
+   "paramValue": 0.15
+  },
+  {
+   "paramName": "对战玩家功勋基数",
+   "paramValue": 1000
+  },
+  {
+   "paramName": "己方连胜额外功勋基数",
+   "paramValue": 100
+  },
+  {
+   "paramName": "己方连胜最大次数",
+   "paramValue": 20
+  },
+  {
+   "paramName": "终结连胜额外功勋基数",
+   "paramValue": 200
+  },
+  {
+   "paramName": "舰队出征基础功勋",
+   "paramValue": 300
+  },
+  {
+   "paramName": "取消宣战消耗",
+   "paramValue": 200
+  },
+  {
+   "paramName": "终结连胜礼包次数",
+   "paramValue": 3
+  }
+ ],
+ "index": {
+  "paramName": {
+   "资源地初始占领数量": 0,
+   "对战间隔": 1,
+   "一般行军速度": 2,
+   "攻城行军速度": 3,
+   "野怪行军速度": 4,
+   "打地行军速度": 5,
+   "世界BOSS行军速度": 6,
+   "情报行军速度": 7,
+   "行军加速消耗": 8,
+   "集结要求耐久": 9,
+   "远征船默认耐久": 10,
+   "打野怪消耗耐久": 11,
+   "攻城战消耗耐久": 12,
+   "资源地消耗耐久": 13,
+   "进攻首领消耗耐久": 14,
+   "打野怪消耗汽油": 15,
+   "资源地消耗汽油": 16,
+   "进攻首领消耗汽油": 17,
+   "进攻宝藏消耗汽油": 18,
+   "情报事件消耗汽油": 19,
+   "采集硅矿消耗汽油": 20,
+   "尾刀BOSS消耗汽油": 21,
+   "耐久维修消耗资源": 22,
+   "耐久维修消耗时间": 23,
+   "对战玩家功勋基数": 24,
+   "己方连胜额外功勋基数": 25,
+   "己方连胜最大次数": 26,
+   "终结连胜额外功勋基数": 27,
+   "舰队出征基础功勋": 28,
+   "取消宣战消耗": 29,
+   "终结连胜礼包次数": 30
+  }
+ }
+}

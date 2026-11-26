@@ -1,0 +1,234 @@
+{
+ "data": [
+  {
+   "eventId": 10001,
+   "type": "击退海盗",
+   "param1": 1,
+   "icon": "icon_pirate1",
+   "eventName": "击退{0}",
+   "hangSeconds": 0,
+   "resId": "world_monster/Pirate1",
+   "limitType": "中秋国庆限时活动1",
+   "eventNameParams": [
+    "海盗"
+   ],
+   "limitReward": [
+    "活动26中秋_爪钩",
+    1
+   ]
+  },
+  {
+   "eventId": 10002,
+   "type": "击退海盗",
+   "param1": 2,
+   "icon": "icon_pirate2",
+   "eventName": "击退{0}",
+   "hangSeconds": 0,
+   "resId": "world_monster/Pirate2",
+   "limitType": "中秋国庆限时活动1",
+   "eventNameParams": [
+    "海盗"
+   ],
+   "limitReward": [
+    "活动26中秋_爪钩",
+    1
+   ]
+  },
+  {
+   "eventId": 10003,
+   "type": "击退海盗",
+   "param1": 3,
+   "icon": "icon_pirate3",
+   "eventName": "击退{0}",
+   "hangSeconds": 0,
+   "resId": "world_monster/Pirate3",
+   "limitType": "中秋国庆限时活动1",
+   "eventNameParams": [
+    "海盗"
+   ],
+   "limitReward": [
+    "活动26中秋_爪钩",
+    1
+   ]
+  },
+  {
+   "eventId": 20001,
+   "type": "城战试探",
+   "param1": 0,
+   "icon": "icon_battle",
+   "eventName": "探查敌城",
+   "hangSeconds": 0,
+   "resId": "",
+   "limitType": "中秋国庆限时活动1",
+   "eventNameParams": [],
+   "limitReward": [
+    "活动26中秋_爪钩",
+    1
+   ]
+  },
+  {
+   "eventId": 30001,
+   "type": "收集资源",
+   "param1": 1,
+   "icon": "icon_hang1",
+   "eventName": "征收{0}",
+   "hangSeconds": 10,
+   "resId": "",
+   "limitType": "中秋国庆限时活动1",
+   "eventNameParams": [
+    "科技点"
+   ],
+   "limitReward": [
+    "活动26中秋_爪钩",
+    1
+   ]
+  },
+  {
+   "eventId": 30002,
+   "type": "收集资源",
+   "param1": 2,
+   "icon": "icon_hang2",
+   "eventName": "征收{0}",
+   "hangSeconds": 10,
+   "resId": "",
+   "limitType": "中秋国庆限时活动1",
+   "eventNameParams": [
+    "种子"
+   ],
+   "limitReward": [
+    "活动26中秋_爪钩",
+    1
+   ]
+  },
+  {
+   "eventId": 30003,
+   "type": "收集资源",
+   "param1": 3,
+   "icon": "icon_hang3",
+   "eventName": "征收{0}",
+   "hangSeconds": 10,
+   "resId": "",
+   "limitType": "中秋国庆限时活动1",
+   "eventNameParams": [
+    "汽油"
+   ],
+   "limitReward": [
+    "活动26中秋_爪钩",
+    1
+   ]
+  },
+  {
+   "eventId": 40001,
+   "type": "救助海兽",
+   "param1": 1,
+   "icon": "icon_help_pet1",
+   "eventName": "救助{0}",
+   "hangSeconds": 3,
+   "resId": "world_radar/Radar4",
+   "limitType": "中秋国庆限时活动1",
+   "eventNameParams": [
+    "海豚"
+   ],
+   "limitReward": [
+    "活动26中秋_爪钩",
+    1
+   ]
+  },
+  {
+   "eventId": 40002,
+   "type": "救助海兽",
+   "param1": 2,
+   "icon": "icon_help_pet2",
+   "eventName": "救助{0}",
+   "hangSeconds": 3,
+   "resId": "world_radar/Radar5",
+   "limitType": "中秋国庆限时活动1",
+   "eventNameParams": [
+    "鲨鱼"
+   ],
+   "limitReward": [
+    "活动26中秋_爪钩",
+    1
+   ]
+  },
+  {
+   "eventId": 40003,
+   "type": "救助海兽",
+   "param1": 3,
+   "icon": "icon_help_pet3",
+   "eventName": "救助{0}",
+   "hangSeconds": 3,
+   "resId": "world_radar/Radar6",
+   "limitType": "中秋国庆限时活动1",
+   "eventNameParams": [
+    "章鱼"
+   ],
+   "limitReward": [
+    "活动26中秋_爪钩",
+    1
+   ]
+  },
+  {
+   "eventId": 50001,
+   "type": "打捞宝箱",
+   "param1": 0,
+   "icon": "icon_dalao",
+   "eventName": "打捞宝箱",
+   "hangSeconds": 3,
+   "resId": "world_radar/Radar2",
+   "limitType": "中秋国庆限时活动1",
+   "eventNameParams": [],
+   "limitReward": [
+    "活动26中秋_爪钩",
+    1
+   ]
+  },
+  {
+   "eventId": 60001,
+   "type": "解救难民",
+   "param1": 0,
+   "icon": "icon_refugee",
+   "eventName": "解救难民",
+   "hangSeconds": 3,
+   "resId": "world_radar/Radar3",
+   "limitType": "中秋国庆限时活动1",
+   "eventNameParams": [],
+   "limitReward": [
+    "活动26中秋_爪钩",
+    1
+   ]
+  },
+  {
+   "eventId": 70001,
+   "type": "占领宝藏",
+   "param1": 0,
+   "icon": "icon_treasure",
+   "eventName": "占领宝藏",
+   "hangSeconds": 20,
+   "resId": "world_treasure/Treasure1",
+   "limitType": "中秋国庆限时活动1",
+   "eventNameParams": [],
+   "limitReward": [
+    "活动26中秋_爪钩",
+    1
+   ]
+  }
+ ],
+ "index": {
+  "eventId": {
+   "10001": 0,
+   "10002": 1,
+   "10003": 2,
+   "20001": 3,
+   "30001": 4,
+   "30002": 5,
+   "30003": 6,
+   "40001": 7,
+   "40002": 8,
+   "40003": 9,
+   "50001": 10,
+   "60001": 11,
+   "70001": 12
+  }
+ }
+}

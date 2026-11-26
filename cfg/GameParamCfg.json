@@ -1,0 +1,68 @@
+{
+ "data": [
+  {
+   "paramName": "初始上阵人数",
+   "paramValue": 6
+  },
+  {
+   "paramName": "普攻获取法力",
+   "paramValue": 8
+  },
+  {
+   "paramName": "受击获取法力",
+   "paramValue": 0
+  },
+  {
+   "paramName": "最大战斗时长",
+   "paramValue": 90
+  },
+  {
+   "paramName": "世界BOSS战斗时长",
+   "paramValue": 60
+  },
+  {
+   "paramName": "初始人口上限",
+   "paramValue": 10
+  },
+  {
+   "paramName": "初始人口",
+   "paramValue": 3
+  },
+  {
+   "paramName": "产品存量初始上限",
+   "paramValue": 50
+  },
+  {
+   "paramName": "玩家经验溢出衰减比例",
+   "paramValue": 0.1
+  },
+  {
+   "paramName": "单波PVP最大战斗时长",
+   "paramValue": 120
+  },
+  {
+   "paramName": "PVP非加时时长",
+   "paramValue": 60
+  },
+  {
+   "paramName": "看广告最低时长",
+   "paramValue": 5
+  }
+ ],
+ "index": {
+  "paramName": {
+   "初始上阵人数": 0,
+   "普攻获取法力": 1,
+   "受击获取法力": 2,
+   "最大战斗时长": 3,
+   "世界BOSS战斗时长": 4,
+   "初始人口上限": 5,
+   "初始人口": 6,
+   "产品存量初始上限": 7,
+   "玩家经验溢出衰减比例": 8,
+   "单波PVP最大战斗时长": 9,
+   "PVP非加时时长": 10,
+   "看广告最低时长": 11
+  }
+ }
+}

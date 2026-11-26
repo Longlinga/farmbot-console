@@ -1,0 +1,18 @@
+{
+ "data": [
+  {
+   "paramName": "每日宝藏奖励次数",
+   "paramValue": 3
+  },
+  {
+   "paramName": "宝藏积分获取速度",
+   "paramValue": 1
+  }
+ ],
+ "index": {
+  "paramName": {
+   "每日宝藏奖励次数": 0,
+   "宝藏积分获取速度": 1
+  }
+ }
+}

@@ -1,0 +1,8 @@
+node_modules/
+auth.json
+guard.json
+cred.json
+buf_login.bin
+*.log
+_backup/
+.DS_Store

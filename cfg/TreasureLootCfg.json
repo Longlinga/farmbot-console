@@ -1,0 +1,50 @@
+{
+ "data": [
+  {
+   "quality": "BLUE",
+   "qualityIndex": 1,
+   "name": "小型货轮",
+   "modelRes": "Treasure1",
+   "score": 900,
+   "rewardLib": [
+    1001,
+    1004,
+    1005
+   ]
+  },
+  {
+   "quality": "PURPLE",
+   "qualityIndex": 2,
+   "name": "中型货轮",
+   "modelRes": "Treasure2",
+   "score": 1500,
+   "rewardLib": [
+    2001,
+    2002,
+    2004,
+    2005
+   ]
+  },
+  {
+   "quality": "ORANGE",
+   "qualityIndex": 3,
+   "name": "万吨货轮",
+   "modelRes": "Treasure3",
+   "score": 3000,
+   "rewardLib": [
+    3001,
+    3002,
+    3003,
+    3004,
+    3005
+   ]
+  }
+ ],
+ "index": {
+  "quality": {
+   "BLUE": 0,
+   "PURPLE": 1,
+   "ORANGE": 2
+  }
+ }
+}

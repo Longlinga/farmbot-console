@@ -1,0 +1,26 @@
+[Unit]
+Description=疯狂水世界 控制台
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# 改成你实际的部署目录
+WorkingDirectory=/opt/farmbot-console
+ExecStart=/usr/bin/node /opt/farmbot-console/server.js
+Restart=always
+RestartSec=5
+# 监听所有网卡，用公网 IP 访问
+Environment=HOST=0.0.0.0
+Environment=PORT=8791
+# 首次部署时想指定初始账号密码，取消下面两行注释
+#Environment=FARMBOT_USER=admin
+#Environment=FARMBOT_PASS=换成你的强密码
+# 走 HTTPS 反代并强制 Secure Cookie 时打开
+#Environment=FARMBOT_COOKIE_SECURE=1
+#Environment=FARMBOT_TRUST_PROXY=1
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

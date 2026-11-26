@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "lz4js": "^0.2.0",
+    "protobufjs": "^8.8.1",
+    "ws": "^8.23.0"
+  }
+}
