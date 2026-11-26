@@ -165,15 +165,52 @@ dmesg | grep -i 'killed process'          # 内核 OOM 的证据
 ---
 
 ## 四、更新部署
-`package.json` 变了）：
+
+### 方式 A：网页点一下（推荐，不用重装）
+
+打开控制台 → **关于** 页签 → 点 **「检查更新」**：
+
+- 显示「已是最新」就没事；
+- 显示「有新版可用」→ 点 **「立即更新并重启」**。
+
+它会从 GitHub 下载最新代码，覆盖程序文件，然后进程以退出码 **75** 退出；
+systemd（`Restart=always`）或 `start.sh` 里的循环会自动把新版本拉起来。
+整个过程 10 秒左右，页面会自动刷新。
+
+**安全性**：只覆盖程序文件（`*.js` / `web/` / 文档 / `version.json`），
+绝不会动这些：
+
+```
+cfg/  game_src/  node_modules/
+cred.json  buf_login.bin  auth.json  guard.json  logs/  _backup/
+```
+
+登录凭据、你的三开关设置、日志都保留。覆盖前还会把旧文件备份到
+`_backup/<时间戳>/`，新版有问题可以直接拷回去。
+
+### 方式 B：命令行
+
+```bash
+cd /opt/farmbot-console
+node update.js check     # 只检查，不下载
+node update.js apply     # 下载并更新，然后自己重启服务
+```
+
+`apply` 完不会自动重启（命令行模式下），需要你再 `sudo systemctl restart farmbot-console`。
+
+### 方式 C：整包重装（改动了 `package.json` 依赖时才需要）
 
 ```bash
 sudo systemctl stop farmbot-console
-# 覆盖新的 .js / web/ / cfg/
+tar -xzf farmbot-console.tar.gz -C /opt/
+# 注意：auth.json / cred.json / buf_login.bin / guard.json / cfg/ 不要覆盖
 sudo systemctl start farmbot-console
 ```
 
-`auth.json`、`cred.json`、`buf_login.bin` 不要覆盖，它们是你的账号与本机登录凭据。
+> **关于 codeload 的缓存**：GitHub 的打包下载有 CDN 缓存，刚推完的几分钟内
+> 可能拿到上一版。`update.js` 已经做了防护：先查远端 `version.json` 拿到期望版本，
+> 下载后校验包内 `version.json`，版本对不上就换下载源重试；
+> 四个源都只给旧版本时会明确报错让你过几分钟再试，不会把旧代码写回去。
 
 ---
 

@@ -167,6 +167,8 @@ systemd 常驻、凭据过期处理）见包里的 `DEPLOY.md`。
 | `client.js` | 协议客户端：登录、组帧、拆帧、lz4 解压、请求/响应 |
 | `protoload.js` | 把游戏自带的 `proto-bundle.js`（1576 个消息类）加载进 Node |
 | `build_login.js` | 用 `cred.json` 重新生成 `buf_login.bin` |
+| `update.js` | **在线更新**：从 GitHub 拉最新代码，只覆盖程序文件，校验版本、备份旧文件 |
+| `version.json` | 当前版本号与更新说明，在线更新比对的就是这个文件 |
 | `refresh_login.py` | 从内存重新扫凭据（token 约 7 天过期） |
 | `farm_probe.js` | 只读探测：农田状态 + 种子库存 |
 | `farm_step.js` | 单步调试：收一次 + 种一次 |
@@ -209,6 +211,32 @@ systemd 常驻、凭据过期处理）见包里的 `DEPLOY.md`。
 - 退让中界面会显示剩余时间，也可以手动点「清除退避」立刻恢复
 
 设置会存到 `guard.json`，重启后保留。默认是**全局停止**——装好后要先选一个模式才会动。
+
+### 在线更新（不用每次全量传包）
+
+代码放在 GitHub 仓库 `Longlinga/farmbot-console`，服务器上点一下就能更新：
+
+**网页**：控制台 → **关于** 页签 → 「检查更新」→ 有新版就点「立即更新并重启」。
+
+**命令行**：
+
+```bash
+cd /opt/farmbot-console
+node update.js check    # 只看有没有新版
+node update.js apply    # 下载并覆盖程序文件
+```
+
+更新只覆盖**程序文件**（`*.js` / `web/` / 文档 / `version.json`），
+不会动 `cfg/`、`game_src/`、`node_modules/`、`cred.json`、`buf_login.bin`、
+`auth.json`、`guard.json`、`logs/`。覆盖前旧文件会备份到 `_backup/<时间戳>/`。
+
+更新完进程以退出码 **75** 退出：`systemd` 的 `Restart=always`、或 `start.sh` 里的循环，
+都会自动把新版本拉起来，不用手工重启。
+
+> 发布新版只要改 `version.json` 里的 `version`，然后推到仓库即可。
+> GitHub 的打包下载有 CDN 缓存，刚推完的几分钟内可能拿到上一版；
+> `update.js` 会先查远端版本号，下载后再校验包内 `version.json`，
+> 对不上就换下载源重试，不会把旧代码写回去。
 
 ### 网页控制台能做什么
 

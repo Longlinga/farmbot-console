@@ -8,6 +8,7 @@ Type=simple
 # 改成你实际的部署目录
 WorkingDirectory=/opt/farmbot-console
 ExecStart=/usr/bin/node /opt/farmbot-console/server.js
+# 在线更新完成后进程以退出码 75 退出，Restart=always 会自动拉起来
 Restart=always
 RestartSec=5
 # 监听所有网卡，用公网 IP 访问

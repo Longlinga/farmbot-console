@@ -145,46 +145,46 @@ async function applyUpdate(log = () => {}, expectVersion = '') {
   };
 
   let gz = null, tar = null, tarVer = null, lastErr = null;
-  const attempts = 4;
-  for (let i = 1; i <= attempts; i++) {
-    // 带时间戳绕开 CDN 缓存
-    const bust = `?t=${Date.now()}&r=${Math.random().toString(36).slice(2)}`;
-    const sources = [
-      `https://codeload.github.com/${REPO}/tar.gz/refs/heads/${BRANCH}${bust}`,
-      `https://api.github.com/repos/${REPO}/tarball/${BRANCH}?t=${Date.now()}`,
+  // 源按可靠性排序：
+  //   1) api.github.com/repos/../tarball  —— 会跳到 codeload，但 URL 不同，通常能绕过缓存
+  //   2) codeload.github.com/tar.gz       —— 国内常被墙，且有 CDN 缓存，放最后
+  // 每个源内带时间戳参数重试 2 次；版本校验不通过就换下一个源，不在坏源上死磕同一个缓存
+  const buildSources = () => {
+    const ts = Date.now();
+    const rnd = Math.random().toString(36).slice(2);
+    return [
+      `https://api.github.com/repos/${REPO}/tarball/${BRANCH}?t=${ts}&r=${rnd}`,
+      `https://codeload.github.com/${REPO}/tar.gz/refs/heads/${BRANCH}?t=${ts}&r=${rnd}`,
     ];
-    gz = null;
-    for (const tarUrl of sources) {
+  };
+  const sources = buildSources();
+  outer: for (const baseUrl of sources) {
+    for (let i = 1; i <= 3; i++) {
+      const sep = baseUrl.includes('?') ? '&' : '?';
+      const tarUrl = `${baseUrl}${sep}_try=${i}&_ts=${Date.now()}`;
       try {
-        log(`正在下载 ${tarUrl.split('?')[0]}（第 ${i} 次）`);
-        gz = await httpsGet(tarUrl);
-        log(`下载完成 ${(gz.length / 1024).toFixed(1)} KB`);
-        break;
+        log(`正在下载 ${baseUrl.split('?')[0]}（第 ${i} 次）`);
+        const buf = await httpsGet(tarUrl);
+        const t = zlib.gunzipSync(buf);
+        const v = readTarVersion(t);
+        if (wantVersion && (!v || String(v.version) !== wantVersion)) {
+          lastErr = new Error(`该源返回旧版本（${v ? v.version : '未知'}），期望 ${wantVersion}`);
+          log(lastErr.message + '，换下一个源');
+          break; // 换源，不在同一个缓存上重试
+        }
+        gz = buf; tar = t; tarVer = v;
+        log(`下载完成 ${(buf.length / 1024).toFixed(1)} KB` + (v ? `，版本 ${v.version}` : ''));
+        break outer;
       } catch (e) {
         lastErr = e;
-        log(`下载源失败（${e.message}），尝试下一个`);
+        log(`下载失败（${e.message}）`);
+        await sleep(1500);
       }
     }
-    if (!gz) { await sleep(2000); continue; }
-
-    try { tar = zlib.gunzipSync(gz); }
-    catch (e) { lastErr = new Error('解压失败: ' + e.message); await sleep(2000); continue; }
-
-    tarVer = readTarVersion(tar);
-    if (!wantVersion) break;
-    if (tarVer && String(tarVer.version) === wantVersion) {
-      log(`压缩包版本校验通过（${tarVer.version}）`);
-      break;
-    }
-    lastErr = new Error(`拿到的压缩包是旧版本（${tarVer ? tarVer.version : '未知'}），期望 ${wantVersion}`);
-    log(lastErr.message + '，2 秒后重试');
-    tar = null; tarVer = null; gz = null;
-    await sleep(2000);
   }
-
-  if (!gz || !tar) throw new Error('下载失败: ' + (lastErr ? lastErr.message : '未知'));
+  if (!tar) throw new Error('下载失败: ' + (lastErr ? lastErr.message : '未知'));
   if (wantVersion && (!tarVer || String(tarVer.version) !== wantVersion)) {
-    throw new Error(`多次重试仍拿到旧压缩包（${tarVer ? tarVer.version : '未知'}），请过几分钟再试`);
+    throw new Error(`所有下载源都只返回旧版本（${tarVer ? tarVer.version : '未知'}），请过几分钟再试`);
   }
   log('开始解压');
 

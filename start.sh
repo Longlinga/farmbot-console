@@ -25,4 +25,24 @@ export HOST="${HOST:-127.0.0.1}"
 export PORT="${PORT:-8791}"
 
 echo "启动中… HOST=$HOST PORT=$PORT"
-exec node server.js
+
+# 退出码 75 = 在线更新完成，需要重启加载新代码。
+# 用循环代替 exec，这样直接 ./start.sh 跑的时候更新完也能自动拉起，
+# 不依赖 systemd 的 Restart=always。
+while true; do
+  set +e
+  node server.js
+  CODE=$?
+  set -e
+  if [ "$CODE" -eq 75 ]; then
+    echo "检测到在线更新完成（退出码 75），2 秒后重启…"
+    sleep 2
+    continue
+  fi
+  if [ "$CODE" -eq 0 ]; then
+    echo "服务正常退出。"
+    exit 0
+  fi
+  echo "[警告] 服务异常退出（退出码 $CODE），5 秒后重启。按 Ctrl+C 可停止。" >&2
+  sleep 5
+done
