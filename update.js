@@ -124,31 +124,69 @@ function stamp() {
 }
 
 // 执行更新：下载 → 备份 → 覆盖
-async function applyUpdate(log = () => {}) {
+// expectVersion: 期望更新到的版本号（可选）。codeload 有 CDN 缓存，
+// 刚推完的几分钟内可能拿到旧压缩包，所以拿到包后要校验 version.json，
+// 不匹配就带时间戳参数重试（穿透缓存），避免把旧代码写回去。
+async function applyUpdate(log = () => {}, expectVersion = '') {
   const before = readLocalVersion();
-  // 多个下载源，按顺序尝试（codeload 和 api 在国内通常能通，github.com 常被墙）
-  const sources = [
-    `https://codeload.github.com/${REPO}/tar.gz/refs/heads/${BRANCH}`,
-    `https://api.github.com/repos/${REPO}/tarball/${BRANCH}`,
-  ];
-  let gz = null, lastErr = null;
-  for (const tarUrl of sources) {
-    try {
-      log(`正在下载 ${tarUrl}`);
-      gz = await httpsGet(tarUrl);
-      log(`下载完成 ${(gz.length / 1024).toFixed(1)} KB`);
-      break;
-    } catch (e) {
-      lastErr = e;
-      log(`下载源失败（${e.message}），尝试下一个`);
-    }
-  }
-  if (!gz) throw new Error('所有下载源都失败: ' + (lastErr ? lastErr.message : '未知'));
-  log('开始解压');
+  const wantVersion = String(expectVersion || '');
 
-  let tar;
-  try { tar = zlib.gunzipSync(gz); }
-  catch (e) { throw new Error('解压失败: ' + e.message); }
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const readTarVersion = (tarBuf) => {
+    try {
+      const list = parseTar(tarBuf);
+      for (const e of list) {
+        if (e.name.endsWith('/version.json')) {
+          return JSON.parse(e.data.toString('utf8'));
+        }
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  let gz = null, tar = null, tarVer = null, lastErr = null;
+  const attempts = 4;
+  for (let i = 1; i <= attempts; i++) {
+    // 带时间戳绕开 CDN 缓存
+    const bust = `?t=${Date.now()}&r=${Math.random().toString(36).slice(2)}`;
+    const sources = [
+      `https://codeload.github.com/${REPO}/tar.gz/refs/heads/${BRANCH}${bust}`,
+      `https://api.github.com/repos/${REPO}/tarball/${BRANCH}?t=${Date.now()}`,
+    ];
+    gz = null;
+    for (const tarUrl of sources) {
+      try {
+        log(`正在下载 ${tarUrl.split('?')[0]}（第 ${i} 次）`);
+        gz = await httpsGet(tarUrl);
+        log(`下载完成 ${(gz.length / 1024).toFixed(1)} KB`);
+        break;
+      } catch (e) {
+        lastErr = e;
+        log(`下载源失败（${e.message}），尝试下一个`);
+      }
+    }
+    if (!gz) { await sleep(2000); continue; }
+
+    try { tar = zlib.gunzipSync(gz); }
+    catch (e) { lastErr = new Error('解压失败: ' + e.message); await sleep(2000); continue; }
+
+    tarVer = readTarVersion(tar);
+    if (!wantVersion) break;
+    if (tarVer && String(tarVer.version) === wantVersion) {
+      log(`压缩包版本校验通过（${tarVer.version}）`);
+      break;
+    }
+    lastErr = new Error(`拿到的压缩包是旧版本（${tarVer ? tarVer.version : '未知'}），期望 ${wantVersion}`);
+    log(lastErr.message + '，2 秒后重试');
+    tar = null; tarVer = null; gz = null;
+    await sleep(2000);
+  }
+
+  if (!gz || !tar) throw new Error('下载失败: ' + (lastErr ? lastErr.message : '未知'));
+  if (wantVersion && (!tarVer || String(tarVer.version) !== wantVersion)) {
+    throw new Error(`多次重试仍拿到旧压缩包（${tarVer ? tarVer.version : '未知'}），请过几分钟再试`);
+  }
+  log('开始解压');
 
   const entries = parseTar(tar);
   log(`压缩包内 ${entries.length} 个文件`);
@@ -217,7 +255,19 @@ if (require.main === module) {
       process.exit(0);
     }
     if (cmd === 'apply') {
-      const r = await applyUpdate(log);
+      let want = '';
+      try {
+        const ck = await checkUpdate();
+        want = ck.latest || '';
+        if (!ck.hasUpdate) {
+          log(`本地 ${ck.current} 已是远端最新（${ck.latest}），无需更新`);
+          process.exit(0);
+        }
+        log(`本地 ${ck.current} → 远端 ${ck.latest}`);
+      } catch (e) {
+        log('版本检查失败，直接尝试更新: ' + e.message);
+      }
+      const r = await applyUpdate(log, want);
       log(`完成：${r.from} → ${r.to}`);
       log('请重启服务生效：systemctl restart farmbot-console（或重跑 ./start.sh）');
       process.exit(0);

@@ -552,8 +552,20 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/update/apply' && req.method === 'POST') {
       if (state.running) return json(res, 429, { ok: false, error: '正在执行操作，请稍后再试' });
       try {
-        pushLog('[更新] 开始从 GitHub 拉取最新版', 'warn');
-        const r = await update.applyUpdate((m) => pushLog('[更新] ' + m));
+        // 先查一次远端版本，把期望版本传给 applyUpdate 做校验，
+        // 防止 codeload 的 CDN 缓存把旧压缩包写回来
+        let want = '';
+        try {
+          const ck = await update.checkUpdate();
+          want = ck.latest || '';
+          if (!ck.hasUpdate) {
+            return json(res, 200, { ok: true, upToDate: true, from: ck.current, to: ck.current, files: [], notes: ck.notes });
+          }
+          pushLog(`[更新] 开始从 GitHub 拉取 ${ck.latest}（当前 ${ck.current}）`, 'warn');
+        } catch (e) {
+          pushLog('[更新] 版本检查失败，直接尝试更新: ' + e.message, 'warn');
+        }
+        const r = await update.applyUpdate((m) => pushLog('[更新] ' + m), want);
         pushLog(`[更新] 完成 ${r.from} → ${r.to}，已写入 ${r.files.length} 个文件，即将重启`, 'ok');
         broadcast('state', publicState());
         json(res, 200, { ok: true, ...r, restarting: true });
