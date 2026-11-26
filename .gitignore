@@ -6,3 +6,4 @@ buf_login.bin
 *.log
 _backup/
 .DS_Store
+_push.js
