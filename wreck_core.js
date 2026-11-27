@@ -4,8 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { Client } = require('./client');
 
-const num = (v) =>
-  v && typeof v === 'object' ? Number(v.low || 0) + Number(v.high || 0) * 4294967296 : Number(v || 0);
+const { toNum: num } = require('./int64');
 const now = () => Math.floor(Date.now() / 1000);
 
 // 颜色枚举（协议 Color：WHITE=1,GREEN=2,BLUE=3,PURPLE=4,ORANGE=5,RED=6）

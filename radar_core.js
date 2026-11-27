@@ -3,9 +3,8 @@
 const fs = require('fs');
 const path = require('path');
 const { Client } = require('./client');
+const { toNum: num, toStr, toLong } = require('./int64');
 
-const num = (v) =>
-  v && typeof v === 'object' ? Number(v.low || 0) + Number(v.high || 0) * 4294967296 : Number(v || 0);
 const now = () => Math.floor(Date.now() / 1000);
 
 // 事件配置（中文 type/hangSeconds）
@@ -73,6 +72,7 @@ async function readRadar(c) {
       const req = e.refugee ? (e.refugee.requirements || []).map((r) => ({ id: r.id, num: num(r.num) })) : null;
       return {
         uid: num(e.uid),
+        uidStr: toStr(e.uid),
         eventId: e.eventId,
         color: e.color || 0,
         gridIdx: e.gridIdx || 0,
@@ -205,7 +205,7 @@ async function runRadarRound(opts = {}) {
           if (dry) { lines.push(`[dry] ${p.fleet} → ${p.event.type}(ev${p.event.eventId} uid=${p.event.uid})`); continue; }
           try {
             // 用 requestAck 等 OkResponse 确认，服务端拒绝会抛错（原先静默 send 会误报成功）
-            await c.requestAck('RadarSendFleetsRequest', { uid: p.event.uid, fleetBuildingIds: [p.fleet] }, 8000);
+            await c.requestAck('RadarSendFleetsRequest', { uid: p.event.uidStr || toLong(p.event.uid), fleetBuildingIds: [p.fleet] }, 8000);
             res.dispatched.push({ fleet: p.fleet, uid: p.event.uid, type: p.event.type, eventId: p.event.eventId });
             lines.push(`派出 ${p.fleet} → ${p.event.type}（${p.event.color}星 格${p.event.gridIdx || '-'}）`);
             await new Promise((r) => setTimeout(r, 700));
@@ -325,7 +325,7 @@ async function runRadarAll(opts = {}) {
         for (const p of plans) {
           if (dry) { say(`[dry] ${p.fleet} → ${p.event.type}(ev${p.event.eventId} uid=${p.event.uid})`); continue; }
           try {
-            await c.requestAck('RadarSendFleetsRequest', { uid: p.event.uid, fleetBuildingIds: [p.fleet] }, 8000);
+            await c.requestAck('RadarSendFleetsRequest', { uid: p.event.uidStr || toLong(p.event.uid), fleetBuildingIds: [p.fleet] }, 8000);
             res.dispatched.push({ fleet: p.fleet, uid: p.event.uid, type: p.event.type, eventId: p.event.eventId });
             say(`派出 ${p.fleet} → ${p.event.type}（${p.event.color}星 格${p.event.gridIdx || '-'}）`);
             petrol -= PETROL_COST;

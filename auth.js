@@ -73,6 +73,12 @@ function destroySession(token) {
   if (token) sessions.delete(token);
 }
 
+// 密码变更后让所有旧会话立即失效（改密后其他设备/浏览器要重新登录）
+function destroyAllSessions() {
+  sessions.clear();
+  return true;
+}
+
 function parseCookies(header) {
   const out = {};
   for (const part of String(header || '').split(';')) {
@@ -114,7 +120,7 @@ function noteOk(ip) { fails.delete(ip); }
 
 module.exports = {
   ensureAccount, setPassword, verify, readAccount,
-  createSession, getSession, destroySession,
+  createSession, getSession, destroySession, destroyAllSessions,
   parseCookies, cookieHeader, COOKIE,
   isLocked, noteFail, noteOk,
   FILE,

@@ -1,5 +1,5 @@
 {
-  "version": "1.0.5",
-  "releasedAt": "2026-11-26",
-  "notes": "正式版：在线更新（换源 + 版本校验）+ start.sh 自动重启 + 货轮循环出兵"
+  "version": "1.1.0",
+  "releasedAt": "2026-11-27",
+  "notes": "1.1.0：修复情报 uid 精度（int64 有符号 low 导致派舰队 no such event）+ 新增修改密码/退出登录入口"
 }

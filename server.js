@@ -491,6 +491,37 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
 
+    // 修改密码：必须已登录，且要验证原密码
+    if (p === '/api/password' && req.method === 'POST') {
+      if (!AUTH) return json(res, 400, { ok: false, error: '当前是免登录模式（FARMBOT_NO_AUTH=1），不需要密码' });
+      if (!sess) return json(res, 401, { ok: false, error: '未登录', needLogin: true });
+
+      const b = await readBody(req);
+      const oldPass = String(b.oldPass || '');
+      const newPass = String(b.newPass || '');
+      const newUser = b.user === undefined || b.user === '' ? sess.user : String(b.user).trim();
+
+      if (!oldPass) return json(res, 400, { ok: false, error: '请填写原密码' });
+      if (newPass.length < 6) return json(res, 400, { ok: false, error: '新密码至少 6 位' });
+      if (newPass.length > 128) return json(res, 400, { ok: false, error: '新密码最多 128 位' });
+      if (!/^[A-Za-z0-9_.@-]{2,32}$/.test(newUser)) {
+        return json(res, 400, { ok: false, error: '账号只能包含字母、数字和 _ . @ -，长度 2~32' });
+      }
+      if (!auth.verify(sess.user, oldPass)) {
+        auth.noteFail(ip);
+        pushLog(`修改密码失败：原密码不正确（账号 ${sess.user} 来自 ${ip}）`, 'warn');
+        return json(res, 400, { ok: false, error: '原密码不正确' });
+      }
+
+      auth.setPassword(newUser, newPass);
+      // 密码改了，所有旧会话立即失效，然后给当前这个浏览器换发一个新会话，避免自己被踢出去
+      auth.destroyAllSessions();
+      const t = auth.createSession(newUser);
+      res.setHeader('set-cookie', auth.cookieHeader(t, 7 * 24 * 3600, COOKIE_SECURE));
+      pushLog(`密码已修改：账号 ${newUser} 来自 ${ip}（其他设备的登录已失效）`, 'ok');
+      return json(res, 200, { ok: true, user: newUser });
+    }
+
     if (p === '/api/session') {
       const acc = auth.readAccount ? auth.readAccount() : null;
       return json(res, 200, {

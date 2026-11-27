@@ -13,8 +13,17 @@ tar -xzf farmbot-console.tar.gz -C /opt/
 cd /opt/farmbot-console
 
 # 2. 启动（监听所有网卡，方便用公网 IP 访问）
-HOST=0.0.0.0 ./start.sh
+HOST=0.0.0.0 ./start.sh          # 前台运行，Ctrl+C 停止，关掉 SSH 也会停
+# 或者后台运行：
+HOST=0.0.0.0 ./start.sh -d       # 后台运行，日志 logs/console.out
 ```
+
+> **前台 vs 后台**
+>
+> - `./start.sh` 是**前台**的：占着这个终端，`Ctrl+C` 就停，**断开 SSH 也会停**。适合第一次试跑、看报错。
+> - `./start.sh -d`（等同 `--daemon`）是**后台**的：进程脱离终端，关掉 SSH 不影响；日志写到 `logs/console.out`。
+>   配套命令：`./start.sh status` 看状态、`./start.sh stop` 停止、`./start.sh restart` 重启。
+> - **长期挂机推荐 systemd**（见第三节），比 `-d` 更可靠：开机自启、崩溃自动拉起、日志进 journal。
 
 启动后控制台会打印一段账号密码：
 
@@ -96,6 +105,21 @@ HOST=127.0.0.1 PORT=8791 FARMBOT_COOKIE_SECURE=1 FARMBOT_TRUST_PROXY=1 ./start.s
 
 ## 三、用 systemd 常驻（服务器重启后自动拉起）
 
+### 最省事：跑一下安装脚本
+
+```bash
+cd /opt/farmbot-console
+sudo HOST=0.0.0.0 PORT=8791 ./install-service.sh
+```
+
+脚本会自动：生成 `/etc/systemd/system/farmbot-console.service`（`ExecStart` 用真实的 node 路径、
+`WorkingDirectory` 用当前目录，不用手改）、`daemon-reload`、`enable` 开机自启、`restart` 拉起，
+最后检查服务是否真的起来了，并告诉你去哪找首次账号密码。
+
+卸载：`sudo ./uninstall-service.sh`
+
+### 手动安装（想自己控制细节时）
+
 ```bash
 # 1. 复制服务文件
 sudo cp /opt/farmbot-console/farmbot-console.service /etc/systemd/system/
@@ -111,6 +135,9 @@ sudo systemctl enable --now farmbot-console
 sudo systemctl status farmbot-console
 sudo journalctl -u farmbot-console -f
 ```
+
+**注意**：装 systemd 服务前，先确认没有别的 `./start.sh` 还在跑（端口会被占）。
+`ss -lntp | grep 8791` 查一下，有的话 `./start.sh stop` 或 `Ctrl+C` 停掉。
 
 **首次启动的账号密码在 journal 里**，用这个命令找：
 
@@ -270,6 +297,12 @@ rm /opt/farmbot-console/auth.json
 sudo systemctl restart farmbot-console
 sudo journalctl -u farmbot-console | grep -A3 '首次启动'
 ```
+
+**Q: 想改密码（还记得原密码）**
+
+打开控制台 → 最后一个「关于」页签 → 最下方「账号」区块 → 点「修改密码」，填原密码和两遍新密码即可。改完**其他设备上的登录会立即失效**，当前浏览器会自动换发新登录态，不用重新登录。
+
+密码用 scrypt 加盐后存在 `auth.json`，明文不落盘。同一个区块里还有「退出登录」。
 
 **Q: 想让某台机器免登录访问（不建议）**
 ```bash

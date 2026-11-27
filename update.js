@@ -16,11 +16,11 @@ const REQUEST_TIMEOUT = 20000;
 // 允许被更新覆盖的文件（相对路径）。注意：/ 结尾表示目录（整个目录下的文件都允许）
 const ALLOW = [
   'server.js', 'client.js', 'farm_core.js', 'radar_core.js', 'wreck_core.js',
-  'guard.js', 'auth.js', 'protoload.js', 'update.js',
+  'guard.js', 'auth.js', 'protoload.js', 'update.js', 'int64.js',
   'farmbot.js', 'radar_cli.js', 'wreck_cli.js', 'build_login.js',
   'package.json', 'package-lock.json',
   'README.md', 'DEPLOY.md', 'version.json',
-  'start.sh', 'farmbot-console.service',
+  'start.sh', 'install-service.sh', 'uninstall-service.sh', 'farmbot-console.service',
   'web/',
 ];
 
@@ -225,8 +225,10 @@ async function applyUpdate(log = () => {}, expectVersion = '') {
     fs.writeFileSync(dst, f.data);
     written++;
   }
-  // start.sh 保持可执行
-  try { fs.chmodSync(path.join(ROOT, 'start.sh'), 0o755); } catch (e) {}
+  // 脚本保持可执行
+  for (const s of ['start.sh', 'install-service.sh', 'uninstall-service.sh']) {
+    try { fs.chmodSync(path.join(ROOT, s), 0o755); } catch (e) {}
+  }
 
   const after = readLocalVersion();
   log(`已更新 ${written} 个文件：${before.version} → ${after.version}`);

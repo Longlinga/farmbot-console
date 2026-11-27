@@ -799,6 +799,97 @@
     .gmode svg { display: none; }
     .guard-win input[type="time"] { width: 96px; }
   }
+
+  /* ---------- 弹窗（修改密码） ---------- */
+  .modal {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(2, 6, 23, .72);
+    backdrop-filter: blur(2px);
+  }
+  .modal-card {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    max-height: calc(100vh - 40px);
+    overflow: auto;
+    padding: 20px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .6);
+  }
+  .modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .modal-head h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--fg);
+  }
+  .modal-x {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--dim);
+    font-size: 13px;
+    cursor: pointer;
+    transition: color .15s, border-color .15s;
+  }
+  .modal-x:hover { color: var(--fg); border-color: var(--muted); }
+  .modal input[type="password"],
+  .modal input[type="text"] {
+    width: 100%;
+    padding: 9px 11px;
+    background: var(--card-2);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .modal input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, .18);
+  }
+  .modal .field label {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .modal-msg {
+    min-height: 18px;
+    margin-top: 8px;
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+  .modal-msg.err { color: var(--danger); }
+  .modal-msg.ok { color: var(--accent); }
+  @media (max-width: 420px) {
+    .modal { padding: 12px; align-items: flex-start; }
+    .modal-card { padding: 16px; margin-top: 8vh; }
+  }
 </style>
 </head>
 <body>
@@ -1167,6 +1258,34 @@
       更新完成后进程会以退出码 <b>75</b> 退出，由 <span class="mono">systemd</span>（<b>Restart=always</b>）或 <span class="mono">start.sh</span> 自动拉起新版本。
     </div>
   </div>
+
+  <div class="card panel" id="acctCard">
+    <div class="sec-head"><span>账号</span><span class="line"></span><span class="mono" style="font-size:11px">修改密码 / 退出登录</span></div>
+    <div class="row">
+      <div class="field">
+        <label>当前账号</label>
+        <div class="mono" id="acctUser" style="font-size:13px;color:var(--dim)">—</div>
+      </div>
+      <div class="field">
+        <label>登录状态</label>
+        <div id="acctState" style="font-size:13px;color:var(--dim)">—</div>
+      </div>
+    </div>
+    <div class="btns">
+      <button id="btnPwd" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        修改密码
+      </button>
+      <button id="btnLogout" type="button" class="danger">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 17l5-5-5-5"/><path d="M20 12H9"/><path d="M13 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/></svg>
+        退出登录
+      </button>
+    </div>
+    <div class="hint" style="margin-top:10px;font-size:12px;color:var(--dim)">
+      改完密码后<b>其他设备上的登录会立即失效</b>，当前这个浏览器会自动换新登录态，不用重新输一遍。<br>
+      密码用 scrypt 加盐后存在服务器上的 <span class="mono">auth.json</span>，明文不会落盘。
+    </div>
+  </div>
   </section>
 
   <div class="card log-box">
@@ -1174,6 +1293,40 @@
     <div id="log" role="log" aria-live="polite" aria-label="运行日志"></div>
   </div>
 
+</div>
+
+<!-- 修改密码弹窗 -->
+<div class="modal" id="pwdModal" hidden role="dialog" aria-modal="true" aria-labelledby="pwdTitle">
+  <div class="modal-backdrop" data-close="1"></div>
+  <div class="modal-card" role="document">
+    <div class="modal-head">
+      <h2 id="pwdTitle">修改密码</h2>
+      <button class="modal-x" type="button" id="btnPwdClose" aria-label="关闭">✕</button>
+    </div>
+    <form id="pwdForm" autocomplete="off">
+      <div class="field" style="margin-bottom:12px">
+        <label for="pwdOld">原密码</label>
+        <input type="password" id="pwdOld" autocomplete="current-password" placeholder="当前正在用的密码" required>
+      </div>
+      <div class="field" style="margin-bottom:12px">
+        <label for="pwdNew">新密码</label>
+        <input type="password" id="pwdNew" autocomplete="new-password" placeholder="至少 6 位" minlength="6" maxlength="128" required>
+      </div>
+      <div class="field" style="margin-bottom:12px">
+        <label for="pwdNew2">再输一次新密码</label>
+        <input type="password" id="pwdNew2" autocomplete="new-password" placeholder="和新密码保持一致" minlength="6" maxlength="128" required>
+      </div>
+      <div class="field" style="margin-bottom:6px">
+        <label for="pwdUser">账号名（不改就留空）</label>
+        <input type="text" id="pwdUser" autocomplete="username" placeholder="留空 = 保持当前账号名" maxlength="32">
+      </div>
+      <div class="modal-msg" id="pwdMsg"></div>
+      <div class="btns" style="margin-top:14px">
+        <button class="primary" type="submit" id="btnPwdSubmit">保存</button>
+        <button type="button" data-close="1">取消</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <script>
@@ -2193,7 +2346,7 @@
       if (which === 'radar') loadRadar(false);
       if (which === 'wreck') loadWreck(false);
       if (which === 'logs') loadLogIndex();
-      if (which === 'about') loadVersion();
+      if (which === 'about') { loadVersion(); loadAccount(); }
     }
   }
   $('tabFarm').addEventListener('click', () => selectTab('farm'));
@@ -2265,6 +2418,92 @@
 
   $('btnCheckUpdate').addEventListener('click', checkUpdate);
   $('btnApplyUpdate').addEventListener('click', applyUpdate);
+
+  // ---------- 账号：修改密码 / 退出登录 ----------
+  let acctInfo = null;
+
+  async function loadAccount() {
+    try {
+      const s = await api('/api/session');
+      acctInfo = s;
+      $('acctUser').textContent = s.user || '—';
+      $('acctState').innerHTML = s.loggedIn
+        ? '<span style="color:var(--accent)">已登录</span>'
+        : (s.authEnabled ? '<span style="color:var(--danger)">未登录</span>' : '免登录模式');
+      const card = $('acctCard');
+      if (card) card.hidden = !s.authEnabled;
+    } catch (e) { /* 静默 */ }
+  }
+
+  function pwdMsg(text, cls) {
+    const el = $('pwdMsg');
+    el.textContent = text || '';
+    el.className = 'modal-msg' + (cls ? ' ' + cls : '');
+  }
+
+  function openPwd() {
+    pwdMsg('');
+    $('pwdOld').value = '';
+    $('pwdNew').value = '';
+    $('pwdNew2').value = '';
+    $('pwdUser').value = '';
+    $('pwdModal').hidden = false;
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => { try { $('pwdOld').focus(); } catch (e) {} }, 30);
+  }
+
+  function closePwd() {
+    $('pwdModal').hidden = true;
+    document.body.style.overflow = '';
+  }
+
+  async function submitPwd(ev) {
+    ev.preventDefault();
+    const oldPass = $('pwdOld').value;
+    const newPass = $('pwdNew').value;
+    const newPass2 = $('pwdNew2').value;
+    const user = $('pwdUser').value.trim();
+
+    if (!oldPass) return pwdMsg('请填写原密码', 'err');
+    if (newPass.length < 6) return pwdMsg('新密码至少 6 位', 'err');
+    if (newPass !== newPass2) return pwdMsg('两次输入的新密码不一致', 'err');
+
+    const btn = $('btnPwdSubmit');
+    btn.disabled = true;
+    pwdMsg('保存中…');
+    try {
+      const body = { oldPass, newPass };
+      if (user) body.user = user;
+      const r = await api('/api/password', { method: 'POST', body: JSON.stringify(body) });
+      pwdMsg('已保存，其他设备需要重新登录', 'ok');
+      addLog({ t: Date.now(), text: `登录密码已修改（账号 ${r.user}）`, level: 'ok' });
+      setTimeout(() => { closePwd(); loadAccount(); }, 900);
+    } catch (e) {
+      pwdMsg(e.message || '修改失败', 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function doLogout() {
+    if (!confirm('确认退出登录？退出后需要重新输入密码。')) return;
+    try {
+      await api('/api/logout', { method: 'POST', body: '{}' });
+      location.replace('/login.html');
+    } catch (e) {
+      addLog({ t: Date.now(), text: '退出登录失败: ' + e.message, level: 'error' });
+    }
+  }
+
+  $('btnPwd').addEventListener('click', openPwd);
+  $('btnLogout').addEventListener('click', doLogout);
+  $('pwdForm').addEventListener('submit', submitPwd);
+  $('pwdModal').addEventListener('click', (ev) => {
+    if (ev.target.dataset && ev.target.dataset.close) closePwd();
+  });
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && !$('pwdModal').hidden) closePwd();
+  });
 
   // ---------- 日志面板 ----------
   let logFiles = [];
@@ -2396,5 +2635,6 @@
 </script>
 
 <div id="wreckPop" class="wreck-pop" role="tooltip" aria-hidden="true"></div>
+
 </body>
 </html>

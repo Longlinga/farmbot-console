@@ -66,8 +66,7 @@ async function readItems(c) {
   return map;
 }
 
-const numOf = (v) =>
-  v && typeof v === 'object' ? Number(v.low || 0) + Number(v.high || 0) * 4294967296 : Number(v || 0);
+const { toNum: numOf } = require('./int64');
 
 // 建筑产出分两类，领取协议不同：
 //   工厂类（种子厂/建材厂/切鱼厂/食品厂…）：成品堆在 factory.finishedProducts
