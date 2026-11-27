@@ -600,8 +600,8 @@ const server = http.createServer(async (req, res) => {
         pushLog(`[更新] 完成 ${r.from} → ${r.to}，已写入 ${r.files.length} 个文件，即将重启`, 'ok');
         broadcast('state', publicState());
         json(res, 200, { ok: true, ...r, restarting: true });
-        // 先把响应发出去，再退出让 start.sh / systemd 拉起新版本
-        update.requestRestart(800);
+        // 先把响应发出去，再决定谁来拉起新版本（见 restartAfterUpdate 注释）
+        setTimeout(restartAfterUpdate, 800);
         return;
       } catch (e) {
         pushLog('[更新] 失败: ' + e.message, 'error');
@@ -884,8 +884,38 @@ if (AUTH) {
   if (r.created) firstRun = r.created;
 }
 
+// 在线更新完成后如何让新版本跑起来：
+//   1) 有监管程序（systemd 的 Restart=always、start.sh 的 while 循环）→ 退出码 75，交给监管拉起
+//   2) 没有任何监管（裸 node server.js / nohup）→ 自己拉起自己，否则更新完就彻底没了
+// 两种情况互斥，不会出现两个进程抢端口。
+function restartAfterUpdate() {
+  const supervised = !!process.env.INVOCATION_ID || process.env.FARMBOT_START_SH === '1';
+  if (supervised) {
+    fileLog('warn', '更新完成，退出码 75，等待监管程序拉起新版本');
+    process.exit(75);
+  }
+  fileLog('warn', '更新完成，未检测到监管程序，自行拉起新进程');
+  try {
+    const { spawn } = require('child_process');
+    const child = spawn(process.execPath, process.argv.slice(1), {
+      cwd: process.cwd(),
+      detached: true,
+      stdio: 'inherit',
+      env: Object.assign({}, process.env, { FARMBOT_CHILD_OF_RESTART: '1' }),
+    });
+    child.unref();
+  } catch (e) {
+    fileLog('fatal', '自行拉起新进程失败: ' + (e && e.message));
+    process.exit(75);
+  }
+  process.exit(0);
+}
+
 server.listen(PORT, HOST, () => {
   pushLog(`控制台已启动 http://${HOST}:${PORT}`, 'ok');
+  // 在线更新后靠谁拉起新进程，先打在日志里，出问题一眼能看出来
+  const sup = process.env.INVOCATION_ID ? 'systemd' : (process.env.FARMBOT_START_SH === '1' ? 'start.sh' : '');
+  pushLog(sup ? `更新后由 ${sup} 自动拉起新版本` : '未检测到监管程序，更新后由进程自己重新拉起', sup ? 'info' : 'warn');
   console.log(`疯狂水世界 控制台: http://${HOST}:${PORT}`);
   if (HOST === '0.0.0.0') console.log(`（已监听所有网卡，公网访问请用服务器公网 IP:${PORT}）`);
   if (!AUTH) {

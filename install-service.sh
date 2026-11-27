@@ -60,6 +60,12 @@ echo "监听    ：${HOST}:${PORT}"
 echo "服务名  ：${SERVICE_NAME}"
 echo
 
+# 如果之前用 systemd-run 起过同名的临时单元，它会和这里的常驻单元抢名字，
+# 表现为 systemd-run 报「Unit xxx.service was already loaded or has a fragment file」。
+# 这里先把临时单元清掉，保证后续 restart 拿到的是我们刚写的那份。
+systemctl stop "${SERVICE_NAME}.service" 2>/dev/null || true
+systemctl reset-failed "${SERVICE_NAME}.service" 2>/dev/null || true
+
 cat > "$UNIT" <<UNIT_EOF
 [Unit]
 Description=疯狂水世界 控制台

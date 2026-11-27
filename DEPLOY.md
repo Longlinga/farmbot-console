@@ -118,6 +118,12 @@ sudo HOST=0.0.0.0 PORT=8791 ./install-service.sh
 
 卸载：`sudo ./uninstall-service.sh`
 
+> **别用 `systemd-run` 起同名的临时单元。** 临时单元也叫 `farmbot-console.service`，会和这里写的常驻单元抢名字，
+> 报错就是 `Unit farmbot-console.service was already loaded or has a fragment file`；而且临时单元不会自动重启，
+> 网页点更新后进程退出（退出码 75）就再没人拉起，表现为「更新后打不开了」。
+> 已经踩过就清理一下：`sudo systemctl stop farmbot-console; sudo systemctl reset-failed farmbot-console`，
+> 再按上面重装。
+
 ### 手动安装（想自己控制细节时）
 
 ```bash
@@ -200,9 +206,16 @@ dmesg | grep -i 'killed process'          # 内核 OOM 的证据
 - 显示「已是最新」就没事；
 - 显示「有新版可用」→ 点 **「立即更新并重启」**。
 
-它会从 GitHub 下载最新代码，覆盖程序文件，然后进程以退出码 **75** 退出；
-systemd（`Restart=always`）或 `start.sh` 里的循环会自动把新版本拉起来。
-整个过程 10 秒左右，页面会自动刷新。
+它会从 GitHub 下载最新代码，覆盖程序文件，然后让新版本跑起来。怎么跑起来分两种情况：
+
+| 你的启动方式 | 更新后怎么重启 |
+| --- | --- |
+| systemd（`install-service.sh` 装的） | 进程退出码 75，`Restart=always` 自动拉起 |
+| `./start.sh` / `./start.sh -d` | 退出码 75，脚本里的循环自动拉起 |
+| 裸 `node server.js` / `nohup` | **进程自己 fork 一个新进程**接着跑，不需要你管 |
+
+启动日志里会写明走的是哪条路：`更新后由 systemd 自动拉起新版本` / `更新后由 start.sh 自动拉起新版本` /
+`未检测到监管程序，更新后由进程自己重新拉起`。看到第三种就说明你是裸跑的，这也正常。
 
 **安全性**：只覆盖程序文件（`*.js` / `web/` / 文档 / `version.json`），
 绝不会动这些：
@@ -224,6 +237,21 @@ node update.js apply     # 下载并更新，然后自己重启服务
 ```
 
 `apply` 完不会自动重启（命令行模式下），需要你再 `sudo systemctl restart farmbot-console`。
+
+### 更新后打不开 / 没有自动起来
+
+1. 先看进程还在不在：`ps aux | grep 'node server.js'`、`ss -lntp | grep 8791`
+2. 看日志里的退出原因：`tail -n 50 logs/server-$(date +%F).log`
+   - `[warn] 更新完成，退出码 75，等待监管程序拉起新版本` + 后面没有新的启动记录
+     → **没有任何监管程序**。说明你是裸跑的 node（这种情况新版本会自己 fork 起来，除非 fork 也失败了）。
+   - 完全没有任何记录就停了 → 被外部强杀，看 `journalctl` / `dmesg | grep -i 'killed process'`
+3. 手动拉起来：`cd /opt/farmbot-console && HOST=0.0.0.0 ./start.sh -d`
+4. 如果之前用 `systemd-run` 起过临时单元，先清掉同名冲突：
+   ```bash
+   sudo systemctl stop farmbot-console
+   sudo systemctl reset-failed farmbot-console
+   sudo HOST=0.0.0.0 ./install-service.sh
+   ```
 
 ### 方式 C：整包重装（改动了 `package.json` 依赖时才需要）
 

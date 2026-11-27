@@ -218,7 +218,7 @@ echo
 # 不依赖 systemd 的 Restart=always。
 while true; do
   set +e
-  node server.js
+  FARMBOT_START_SH=1 node server.js
   CODE=$?
   set -e
   if [ "$CODE" -eq 75 ]; then

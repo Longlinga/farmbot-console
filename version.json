@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.1.1",
   "releasedAt": "2026-11-27",
-  "notes": "1.1.0：修复情报 uid 精度（int64 有符号 low 导致派舰队 no such event）+ 新增修改密码/退出登录入口"
+  "notes": "1.1.1：更新后自启修复（无 systemd/start.sh 监管时进程自己拉起新版本）+ install-service.sh 清理 systemd-run 同名临时单元"
 }
