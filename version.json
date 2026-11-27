@@ -1,5 +1,5 @@
 {
-  "version": "1.1.1",
+  "version": "1.1.2",
   "releasedAt": "2026-11-27",
-  "notes": "1.1.1：更新后自启修复（无 systemd/start.sh 监管时进程自己拉起新版本）+ install-service.sh 清理 systemd-run 同名临时单元"
+  "notes": "1.1.2：install-service.sh 自动清理占用端口的旧进程、识别 systemd-run 临时单元、失败时给出明确原因；更新后自启提示"
 }

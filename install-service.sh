@@ -43,15 +43,56 @@ if [ ! -f "$APP_DIR/server.js" ]; then
   exit 1
 fi
 
-# 检查端口是否已被别的进程占着（常见原因：之前用 start.sh 前台跑过没关）
+# 检查端口是否已被别的进程占着（常见原因：之前用 start.sh / nohup / systemd-run 跑过没关）
+# 这是装服务最常见的失败原因：systemctl restart 起来后抢不到端口，立刻 exit 1，
+# 看起来像「脚本装坏了」，其实是旧进程还占着。这里能识别的就自动收掉。
 if command -v ss >/dev/null 2>&1; then
-  BUSY="$(ss -lntp 2>/dev/null | awk -v p=":${PORT}" '$4 ~ p"$" {print $0}' || true)"
-  if [ -n "$BUSY" ]; then
-    echo "[提示] 端口 ${PORT} 当前已被占用："
-    echo "       $BUSY"
-    echo "       如果是之前前台跑着的 start.sh，先 Ctrl+C 或 kill 掉，否则新服务起不来。"
+  BUSY_PIDS="$(ss -lntpH 2>/dev/null | awk -v p=":${PORT}" '$4 ~ p"$"' | grep -o 'pid=[0-9]*' | cut -d= -f2 | sort -u || true)"
+  if [ -n "$BUSY_PIDS" ]; then
+    echo "[提示] 端口 ${PORT} 已被占用，检查是不是上次的残留进程……"
+    for pid in $BUSY_PIDS; do
+      CMD="$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null || true)"
+      echo "       pid $pid: ${CMD:-<未知>}"
+    done
+    # 只在明确是本程序的 node 进程时自动 kill，别碰别人的服务
+    KILLABLE=""
+    for pid in $BUSY_PIDS; do
+      CMD="$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null || true)"
+      case "$CMD" in
+        *node*server.js*) KILLABLE="$KILLABLE $pid" ;;
+      esac
+    done
+    if [ -n "$KILLABLE" ]; then
+      echo "       识别为本控制台的旧进程，先停掉：$KILLABLE"
+      # shellcheck disable=SC2086
+      kill $KILLABLE 2>/dev/null || true
+      for _ in 1 2 3 4 5 6 7 8 9 10; do
+        if ! ss -lntH 2>/dev/null | awk -v p=":${PORT}" '$4 ~ p"$"' | grep -q .; then break; fi
+        sleep 0.3
+      done
+      # shellcheck disable=SC2086
+      ss -lntH 2>/dev/null | awk -v p=":${PORT}" '$4 ~ p"$"' | grep -q . && kill -9 $KILLABLE 2>/dev/null || true
+      sleep 0.5
+    fi
+    if ss -lntH 2>/dev/null | awk -v p=":${PORT}" '$4 ~ p"$"' | grep -q .; then
+      echo "[错误] 端口 ${PORT} 仍被占用，且不是本程序的进程：" >&2
+      ss -lntp 2>/dev/null | awk -v p=":${PORT}" '$4 ~ p"$"' >&2 || true
+      echo "       请先手动停掉它，或者换个端口：sudo PORT=8899 ./install-service.sh" >&2
+      exit 1
+    fi
+    echo "       端口已释放。"
     echo
   fi
+fi
+
+# systemd-run 建的临时单元和这里的常驻单元同名，会互相顶掉：
+#   systemd-run 报「Unit xxx.service was already loaded or has a fragment file」
+# 或者常驻单元装好了但 restart 实际起的是那个临时单元（没有 Restart=always）。
+if systemctl show "${SERVICE_NAME}.service" -p Transient --value 2>/dev/null | grep -qx 'yes'; then
+  echo "[提示] 检测到同名的 systemd-run 临时单元，先清理……"
+  systemctl stop "${SERVICE_NAME}.service" 2>/dev/null || true
+  systemctl reset-failed "${SERVICE_NAME}.service" 2>/dev/null || true
+  echo
 fi
 
 echo "部署目录：$APP_DIR"
@@ -113,11 +154,20 @@ if systemctl is-active --quiet "$SERVICE_NAME"; then
   echo "     systemctl status  ${SERVICE_NAME}"
   echo "     systemctl restart ${SERVICE_NAME}"
   echo "     journalctl -u ${SERVICE_NAME} -f"
+  echo
+  # 说明清楚以后网页点更新会发生什么，省得再被「更新后没起来」吓一次
+  echo "  之后的在线更新：进程以退出码 75 退出，Restart=always 会自动拉起新版本。"
+  echo "  确认监管生效：journalctl -u ${SERVICE_NAME} -n 50 | grep '更新后由'"
+  echo "  （应显示「更新后由 systemd 自动拉起新版本」）"
 else
   echo
   echo "[失败] 服务没能启动，看错误原因：" >&2
   systemctl status "$SERVICE_NAME" --no-pager -l | head -30 >&2 || true
   echo >&2
   echo "     journalctl -u ${SERVICE_NAME} -n 60 --no-pager" >&2
+  echo >&2
+  echo "  最常见的两个原因：" >&2
+  echo "    1) 端口 ${PORT} 被别的程序占着 → sudo PORT=8899 ./install-service.sh" >&2
+  echo "    2) node 路径不对（用了 nvm，root 访问不到）→ 用系统 node 或改 ExecStart" >&2
   exit 1
 fi

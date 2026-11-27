@@ -116,6 +116,12 @@ sudo HOST=0.0.0.0 PORT=8791 ./install-service.sh
 `WorkingDirectory` 用当前目录，不用手改）、`daemon-reload`、`enable` 开机自启、`restart` 拉起，
 最后检查服务是否真的起来了，并告诉你去哪找首次账号密码。
 
+装之前它会自己处理两件最常见的失败原因：
+
+- **端口被占**：如果 8791 上还挂着之前的 `start.sh` / `nohup node server.js` / `systemd-run`，脚本能认出
+  「是本程序的 node 进程」就自动停掉再继续；认不出（别人的服务）就报错退出，让你换端口，不会乱杀。
+- **同名临时单元**：检测到 `systemd-run` 建的临时单元会先清理，避免抢名字。
+
 卸载：`sudo ./uninstall-service.sh`
 
 > **别用 `systemd-run` 起同名的临时单元。** 临时单元也叫 `farmbot-console.service`，会和这里写的常驻单元抢名字，
