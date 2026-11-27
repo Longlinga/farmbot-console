@@ -24,6 +24,10 @@ for (const r of JSON.parse(fs.readFileSync(path.join(__dirname, 'cfg', 'Treasure
 }
 const MAX_DAILY_REWARD = param['每日宝藏奖励次数'] || 3;
 
+// 默认只在意的稀有奖励（用户要求：万吨货轮若带这两样就自动出兵）
+const DEFAULT_WANT_REWARDS = ['橙装材料自选包', '橙技能书'];
+
+
 // 世界参数（耐久消耗/修复）
 const worldParam = {};
 for (const r of JSON.parse(fs.readFileSync(path.join(__dirname, 'cfg', 'WorldParamCfg.json'), 'utf8')).data) {
@@ -95,6 +99,7 @@ async function readWreck(c) {
       progress: w.progress || 0,
       gridIdx: w.gridIdx || 0,
       reward: ((w.reward && w.reward.asset) || []).map((a) => ({ id: a.id, num: num(a.num) })),
+      rewardNames: ((w.reward && w.reward.asset) || []).map((a) => String(a.id)),
       mine: mine.length > 0,
       myFleets: mine.map((f) => f.id),
       roomLeft: Math.max(0, MAX_FLEET_PER_WRECK - (w.ownerFleetNum || 0)),
@@ -140,9 +145,13 @@ function loopStop(snap, opts = {}) {
   const colors = opts.colors && opts.colors.length ? opts.colors : ALL_COLORS;
   const targetColor = colors[0]; // 最高品质（默认 5 = 万吨）
   const targetName = COLOR_NAME[targetColor] || '目标货轮';
+  const want = opts.wantRewards || [];
   const tops = snap.wrecks.filter((w) => w.color === targetColor);
   if (!tops.length) {
     return { stop: true, reason: 'gone', text: `${targetName}已消失，循环结束` };
+  }
+  if (want.length && !tops.some((w) => matchRewards(w, want))) {
+    return { stop: true, reason: 'gone', text: `${targetName}里已没有带「${want.join('/')}」的了，循环结束` };
   }
   if (snap.rewardLeft <= 0) {
     return { stop: true, reason: 'no-reward', text: `今日货轮奖励次数已用完（${snap.todayRewardTimes}/${snap.totalRewardTimes}），循环结束` };
@@ -180,6 +189,7 @@ async function runWreckRound(opts = {}) {
     doRepair = true,
     doDispatch = true,
     maxPerWreck = 3,
+    wantRewards = [],
     water = null,
   } = opts;
 
@@ -222,10 +232,20 @@ async function runWreckRound(opts = {}) {
 
     // 2) 派出空闲满耐久舰队
     if (doDispatch) {
-      const targets = pickWrecks(snap, colors);
+      let targets = pickWrecks(snap, colors);
+      if (wantRewards && wantRewards.length) {
+        const before = targets.length;
+        targets = targets.filter((w) => matchRewards(w, wantRewards));
+        if (!targets.length) {
+          lines.push(`没有符合奖励要求（${wantRewards.join(' / ')}）的货轮（原有 ${before} 条可打）`);
+          res.skipped = 'no-reward-match';
+        }
+      }
       if (!targets.length) {
-        lines.push('没有可打的货轮（目标品质的都已被占满或已消失）');
-        res.skipped = 'no-target';
+        if (!res.skipped) {
+          lines.push('没有可打的货轮（目标品质的都已被占满或已消失）');
+          res.skipped = 'no-target';
+        }
       } else {
         const ready = readyFleets(snap, minDuraRatio);
         if (!ready.length) {
@@ -288,10 +308,92 @@ function allocateWrecks(targets, ready, maxPerWreck) {
   return pairs;
 }
 
+
+// ---- 排行 / 个人占用 ----
+// TreasureLootRankResponse.items[] = { playerId, nickname, power, progress, estProgress, rank, guildIdx, avatar, rewardTimes }
+// progress = 该玩家累计贡献的占领进度百分比；estProgress = 预计还要多久到 100%（游戏内文案用）
+async function readRank(c, uid) {
+  const r = await c.request('TreasureLootRankRequest', { uid }, 'TreasureLootRankResponse', 8000);
+  return (r.items || [])
+    .map((it) => ({
+      playerId: String(it.playerId && it.playerId.toString ? it.playerId.toString() : it.playerId || ''),
+      nickname: it.nickname || '',
+      power: num(it.power),
+      progress: it.progress || 0,
+      estProgress: it.estProgress || 0,
+      rank: it.rank || 0,
+      guildIdx: it.guildIdx || 0,
+      rewardTimes: it.rewardTimes || 0,
+    }))
+    .sort((a, b) => (a.rank || 999) - (b.rank || 999));
+}
+
+// 给快照补上「我在这条货轮上占多少」+ 前几名。逐条请求，失败不影响整体。
+// opts: { max = 8, players = 5, mineId }
+async function attachRanks(c, snap, opts = {}) {
+  const { max = 8, players = 5 } = opts;
+  const mineId = String(opts.mineId || '');
+  // 只查有意义的：有人在占、或者我已经派了船
+  const list = snap.wrecks.filter((w) => w.progress > 0 || w.mine).slice(0, max);
+  for (const w of list) {
+    try {
+      const items = await readRank(c, w.uid);
+      w.rank = items;
+      w.rankCount = items.length;
+      const me = mineId ? items.find((it) => it.playerId === mineId) : null;
+      w.myRank = me ? me.rank : 0;
+      w.myProgress = me ? me.progress : 0;
+      w.top = items.slice(0, players);
+      await new Promise((r) => setTimeout(r, 120));
+    } catch (e) {
+      w.rankError = e.message;
+      if (/SESSION_YIELD|YIELD/.test(String(e.code || e.message))) break;
+    }
+  }
+  return snap;
+}
+
+// 按奖励关键词筛目标货轮（空数组=不筛）
+function matchRewards(w, want) {
+  if (!want || !want.length) return true;
+  const names = w.rewardNames || (w.reward || []).map((r) => String(r.id));
+  return want.some((k) => names.some((n) => n.indexOf(k) >= 0));
+}
+
+// 整点自动出兵的目标：最高品质（默认万吨）里带指定奖励、且还有位置的那条
+function pickTargets(snap, opts = {}) {
+  const colors = opts.colors && opts.colors.length ? opts.colors : ALL_COLORS;
+  // 留空 = 不限奖励（与面板文案一致）；默认推荐项只在 UI 里作为快捷胶囊展示
+  const want = opts.wantRewards && opts.wantRewards.length ? opts.wantRewards : [];
+  const top = colors[0];
+  return snap.wrecks.filter(
+    (w) => w.color === top && w.roomLeft > 0 && matchRewards(w, want)
+  );
+}
+
+// 下一次整点检测的时间戳（秒）。只在 [from, to] 小时内排，跨到第二天继续。
+// 例：from=8, to=22 → 8:00 到 22:00 每个整点；22:00 之后排到次日 8:00。
+function nextHourlyAt(ts, from = 8, to = 22) {
+  const d = new Date((ts + 1) * 1000);
+  d.setSeconds(0, 0);
+  d.setMinutes(0);
+  d.setHours(d.getHours() + 1);
+  const H = d.getHours();
+  if (H < from || H > to) {
+    if (H > to) d.setDate(d.getDate() + 1);
+    d.setHours(from);
+  }
+  return Math.floor(d.getTime() / 1000);
+}
+
 // 货轮快照（给 Web 面板只读用）
-async function wreckSnapshot() {
+async function wreckSnapshot(opts = {}) {
   return withClient(async (c) => {
     const snap = await readWreck(c);
+    if (opts.ranks) {
+      const pi = c.playerInfo || {};
+      await attachRanks(c, snap, { mineId: String(pi.playerId || ''), max: opts.maxRanks || 8 });
+    }
     return { ok: true, ...snap, colors: WRECK_CFG, maxDailyReward: MAX_DAILY_REWARD };
   });
 }
@@ -299,6 +401,7 @@ async function wreckSnapshot() {
 module.exports = {
   withClient, readWreck, runWreckRound, wreckSnapshot, needRepair, readyFleets, pickWrecks, allocateWrecks,
   loopStop, planNextWake,
+  readRank, attachRanks, matchRewards, pickTargets, nextHourlyAt, DEFAULT_WANT_REWARDS,
   FleetState, ST_NAME, COLOR_NAME, WRECK_CFG, ALL_COLORS, MAX_DAILY_REWARD, MAX_FLEET_PER_WRECK,
   num, now,
 };

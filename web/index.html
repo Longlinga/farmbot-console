@@ -1147,6 +1147,32 @@
         </select>
       </div>
     </div>
+    <div class="row">
+      <div class="field" style="grid-column:1/-1">
+        <label>只打带这些奖励的货轮 <span style="color:var(--dim);font-weight:400">（留空 = 不限奖励）</span></label>
+        <div class="chips" id="rewardChips" style="margin-bottom:8px"></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="rewardInput" type="text" placeholder="也可以手填奖励名，如 紫芯片宝箱" style="flex:1" />
+          <button id="btnAddReward" type="button" style="flex:0 0 auto">添加</button>
+        </div>
+        <div id="rewardHint" class="mono" style="font-size:11px;color:var(--dim);margin-top:6px"></div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field" style="grid-column:1/-1">
+        <label>整点自动检测</label>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="toggle" id="tWHourly" aria-pressed="false" type="button">
+            <span class="sw" aria-hidden="true"></span>开启整点检测
+          </button>
+          <span style="color:var(--dim);font-size:12px">时段</span>
+          <select id="wHourFrom" style="width:92px"></select>
+          <span style="color:var(--dim);font-size:12px">点到</span>
+          <select id="wHourTo" style="width:92px"></select>
+          <span id="wHourlyHint" class="mono" style="font-size:11px;color:var(--dim)"></span>
+        </div>
+      </div>
+    </div>
     <div class="btns">
       <button class="primary" id="btnWreckAuto" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
@@ -1238,12 +1264,6 @@
       <div class="field">
         <label>更新说明</label>
         <div id="abNotes" style="font-size:13px;color:var(--dim)">—</div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="field">
-        <label>仓库鉴权</label>
-        <div id="abAuth" style="font-size:13px;color:var(--dim)">—</div>
       </div>
     </div>
     <div class="btns">
@@ -1994,13 +2014,90 @@
   bindRadarToggle('tRdry', 'dry');
 
   // ---------- 搁浅的货轮 ----------
-  let wCfg = { dry: false, colors: [5, 4, 3], minDuraRatio: 1, doRepair: true, doDispatch: true, maxPerWreck: 3, stats: {}, colorNames: {} };
+  const REWARD_HIGHLIGHT = /橙装材料自选包|橙技能书|紫芯片宝箱|红装材料自选包/;
+
+  let wCfg = {
+    dry: false, colors: [5, 4, 3], minDuraRatio: 1, doRepair: true, doDispatch: true, maxPerWreck: 3,
+    wantRewards: [], hourly: { enabled: false, from: 8, to: 22 }, hourlyAt: 0,
+    defaultWantRewards: [], stats: {}, colorNames: {},
+  };
   let wSnap = null;
   const WRECK_COLORS = [
     { v: 5, name: '万吨货轮' },
     { v: 4, name: '中型货轮' },
     { v: 3, name: '小型货轮' },
   ];
+
+  // ---- 奖励筛选 ----
+  function renderRewardChips() {
+    const box = $('rewardChips');
+    if (!box) return;
+    box.innerHTML = '';
+    const defs = (wCfg.defaultWantRewards || []).slice();
+    const cur = (wCfg.wantRewards || []).slice();
+    // 先把「常用」几个列出来，再补当前已选的（防止手填的看不到）
+    const all = [];
+    defs.forEach((d) => { if (!all.includes(d)) all.push(d); });
+    cur.forEach((d) => { if (!all.includes(d)) all.push(d); });
+    if (!all.length) {
+      const e = document.createElement('span');
+      e.style.cssText = 'color:var(--dim);font-size:12px';
+      e.textContent = '不限奖励（点下面的按钮快速添加）';
+      box.appendChild(e);
+      return;
+    }
+    all.forEach((name) => {
+      const on = cur.includes(name);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip';
+      b.setAttribute('aria-pressed', String(on));
+      b.textContent = name + (on ? '' : ' +');
+      b.title = on ? '点击取消' : '点击加入筛选';
+      b.addEventListener('click', () => {
+        const set = new Set(wCfg.wantRewards || []);
+        if (set.has(name)) set.delete(name); else set.add(name);
+        setWreckConfig({ wantRewards: [...set] });
+      });
+      box.appendChild(b);
+    });
+    const hint = $('rewardHint');
+    if (hint) {
+      hint.textContent = cur.length
+        ? '当前只打带「' + cur.join(' / ') + '」的货轮'
+        : '当前不限奖励（所有目标品质的货轮都会打）';
+    }
+  }
+
+  // ---- 整点检测 ----
+  function fillHourSelect(sel, val) {
+    if (sel.options.length !== 24) {
+      sel.innerHTML = '';
+      for (let h = 0; h < 24; h++) {
+        const o = document.createElement('option');
+        o.value = String(h);
+        o.textContent = (h < 10 ? '0' : '') + h + ':00';
+        sel.appendChild(o);
+      }
+    }
+    sel.value = String(val);
+  }
+
+  function renderHourly() {
+    const h = wCfg.hourly || { enabled: false, from: 8, to: 22 };
+    const t = $('tWHourly');
+    if (t) t.setAttribute('aria-pressed', String(!!h.enabled));
+    fillHourSelect($('wHourFrom'), h.from != null ? h.from : 8);
+    fillHourSelect($('wHourTo'), h.to != null ? h.to : 22);
+    const hint = $('wHourlyHint');
+    if (hint) {
+      if (!h.enabled) hint.textContent = '未开启';
+      else if (wCfg.hourlyAt) {
+        const left = wCfg.hourlyAt - (Math.floor(Date.now() / 1000) + serverSkew);
+        hint.textContent = '下次检测 ' + (left > 0 ? fmtLeft(left) : '马上') + ' · 奖励次数没吃满且目标货轮带指定奖励才出兵';
+      } else hint.textContent = '已开启';
+    }
+  }
 
   function renderColorChips() {
     const box = $('colorChips');
@@ -2079,7 +2176,7 @@
     }
     rs.forEach((r) => {
       const row = document.createElement('div');
-      row.className = 'pop-row' + (r.id === '紫芯片宝箱' ? ' is-gold' : '');
+      row.className = 'pop-row' + (REWARD_HIGHLIGHT.test(String(r.id)) ? ' is-gold' : '');
       const a = document.createElement('span');
       a.className = 'pop-nm';
       a.textContent = r.id;
@@ -2090,6 +2187,49 @@
       row.appendChild(b);
       pop.appendChild(row);
     });
+    // 排行：谁在抢、我占多少
+    if (w.rank && w.rank.length) {
+      const sep = document.createElement('div');
+      sep.style.cssText = 'height:1px;background:var(--border);margin:8px 0 6px';
+      pop.appendChild(sep);
+      const th = document.createElement('div');
+      th.className = 'pop-head';
+      th.style.borderBottom = 'none';
+      const a1 = document.createElement('span');
+      a1.textContent = '占领排行';
+      const a2 = document.createElement('span');
+      a2.className = 'pop-q';
+      a2.textContent = w.rankCount + ' 人';
+      th.appendChild(a1); th.appendChild(a2);
+      pop.appendChild(th);
+      w.rank.slice(0, 5).forEach((it) => {
+        const row = document.createElement('div');
+        row.className = 'pop-row';
+        const nm = document.createElement('span');
+        nm.className = 'pop-nm';
+        nm.textContent = '#' + it.rank + ' ' + (it.nickname || '未知');
+        const nv = document.createElement('span');
+        nv.className = 'pop-num';
+        nv.textContent = it.progress + '%';
+        row.appendChild(nm); row.appendChild(nv);
+        pop.appendChild(row);
+      });
+      if (w.myProgress != null && w.myProgress > 0) {
+        const mine = document.createElement('div');
+        mine.className = 'pop-row';
+        mine.style.cssText = 'margin-top:4px;padding-top:4px;border-top:1px dashed var(--border)';
+        const nm2 = document.createElement('span');
+        nm2.className = 'pop-nm';
+        nm2.style.color = 'var(--accent)';
+        nm2.textContent = '我';
+        const nv2 = document.createElement('span');
+        nv2.className = 'pop-num';
+        nv2.textContent = w.myProgress + '%' + (w.myRank ? ' · 第' + w.myRank + '名' : '');
+        mine.appendChild(nm2); mine.appendChild(nv2);
+        pop.appendChild(mine);
+      }
+    }
+
     // 结算规则提示
     const tip = document.createElement('div');
     tip.className = 'pop-empty';
@@ -2193,6 +2333,9 @@
       el.querySelector('.num').textContent = '进度 ' + w.progress + '%';
       let meta = (w.ownerGuildIdx > 0 ? '联盟 ' + w.ownerGuildIdx + ' 占 ' + w.ownerFleetNum + ' 艘' : '无人占领');
       if (w.mine) meta += ' · 我在 ' + w.myFleets.join('/');
+      if (w.myProgress != null && w.myProgress > 0) meta += ' · 我占 ' + w.myProgress + '%';
+      if (w.myRank) meta += '（第 ' + w.myRank + ' 名）';
+      if (w.rankCount) meta += ' · ' + w.rankCount + ' 人在抢';
       const nRew = (w.reward || []).length;
       if (nRew) meta += ' · 奖励 ' + nRew + ' 项';
       el.querySelector('.wreck-meta').textContent = meta;
@@ -2219,6 +2362,8 @@
     $('wDura').value = String(wCfg.minDuraRatio != null ? wCfg.minDuraRatio : 1);
     $('wMax').value = String(wCfg.maxPerWreck || 3);
     renderColorChips();
+    renderRewardChips();
+    renderHourly();
 
     if (!s) return;
     const cnt = (c) => ((s.stats || []).find((x) => x.color === c) || {}).count || 0;
@@ -2278,7 +2423,7 @@
     const btn = $('btnWreckRefresh');
     if (!quiet) btn.disabled = true;
     try {
-      const d = await api('/api/wreck?refresh=1' + (quiet ? '&quiet=1' : ''));
+      const d = await api('/api/wreck?refresh=1&ranks=1' + (quiet ? '&quiet=1' : ''));
       if (!d.ok) throw new Error(d.error || '读取失败');
       applyWreck(d.cfg, d);
     } catch (e) {
@@ -2339,6 +2484,31 @@
   $('wDura').addEventListener('change', () => setWreckConfig({ minDuraRatio: Number($('wDura').value) }));
   $('wMax').addEventListener('change', () => setWreckConfig({ maxPerWreck: Number($('wMax').value) }));
 
+  // 奖励筛选：手填添加
+  function addRewardFromInput() {
+    const inp = $('rewardInput');
+    const name = (inp.value || '').trim();
+    if (!name) return;
+    const set = new Set(wCfg.wantRewards || []);
+    set.add(name);
+    inp.value = '';
+    setWreckConfig({ wantRewards: [...set] });
+  }
+  $('btnAddReward').addEventListener('click', addRewardFromInput);
+  $('rewardInput').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); addRewardFromInput(); } });
+
+  // 整点检测：开关 + 时段
+  $('tWHourly').addEventListener('click', () => {
+    const cur = $('tWHourly').getAttribute('aria-pressed') === 'true';
+    $('tWHourly').setAttribute('aria-pressed', String(!cur));
+    setWreckConfig({ hourly: { enabled: !cur, from: Number($('wHourFrom').value), to: Number($('wHourTo').value) } });
+  });
+  function onHourChange() {
+    setWreckConfig({ hourly: { enabled: $('tWHourly').getAttribute('aria-pressed') === 'true', from: Number($('wHourFrom').value), to: Number($('wHourTo').value) } });
+  }
+  $('wHourFrom').addEventListener('change', onHourChange);
+  $('wHourTo').addEventListener('change', onHourChange);
+
   // ---------- 页签切换 ----------
   const TABS = ['farm', 'radar', 'wreck', 'logs', 'about'];
   const loadedOnce = { farm: true, radar: false, wreck: false, logs: false, about: false };
@@ -2374,25 +2544,9 @@
       $('abNode').textContent = (v.node || '') + (v.platform ? ' · ' + v.platform : '');
       $('abRepo').textContent = (v.repo || '') + ' @ ' + (v.branch || '');
       $('abNotes').textContent = v.notes || '—';
-      renderAuth(v);
     } catch (e) {
       addLog({ t: Date.now(), text: '读取版本失败: ' + e.message, level: 'error' });
     }
-  }
-
-  // 仓库鉴权状态：公有仓库不用 token；私有仓库必须配 token，否则一律 404
-  function renderAuth(v) {
-    const el = $('abAuth');
-    if (!el) return;
-    const src = (v && v.auth) || 'none';
-    const map = {
-      env: ['已配置（环境变量）', 'var(--accent)', '来自 FARMBOT_GH_TOKEN / GH_TOKEN 环境变量'],
-      file: ['已配置（gh_token.txt）', 'var(--accent)', '从程序目录的 gh_token.txt 读取'],
-      none: ['未配置 token', 'var(--dim)', '公有仓库不需要；仓库改成私有后必须配 token'],
-    };
-    const [txt, color, tip] = map[src] || map.none;
-    el.innerHTML = `<span style="color:${color}">${txt}</span>` +
-      `<span style="color:var(--dim)"> · ${tip}</span>`;
   }
 
   async function checkUpdate() {
@@ -2411,7 +2565,6 @@
         $('btnApplyUpdate').disabled = true;
       }
       if (r.notes) $('abNotes').textContent = r.notes;
-      if (r.auth) renderAuth({ auth: r.auth });
       $('abErr').hidden = true;
     } catch (e) {
       $('abState').innerHTML = '<span style="color:var(--danger)">检查失败</span>';

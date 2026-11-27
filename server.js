@@ -106,6 +106,9 @@ const state = {
     doRepair: true,
     doDispatch: true,
     maxPerWreck: 3,      // 每条货轮最多派几艘自己的船
+    wantRewards: [],     // 只打带这些奖励的货轮（空=不筛）
+    hourly: { enabled: false, from: 8, to: 22 },  // 整点检测：8~22 点每个整点查一次
+    hourlyTimer: null,
     auto: false,         // 自动循环开关（用户点「循环出兵」后为 true）
     minGap: 45,          // 两轮之间最短间隔（秒）
     timer: null,
@@ -299,6 +302,7 @@ async function wreckLoopOnce() {
       doRepair: W.doRepair,
       doDispatch: W.doDispatch,
       maxPerWreck: W.maxPerWreck,
+      wantRewards: W.wantRewards,
     }));
     for (const line of r.lines) pushLog('[货轮] ' + line, /失败/.test(line) ? 'error' : 'info');
     W.stats.rounds++;
@@ -309,7 +313,7 @@ async function wreckLoopOnce() {
 
     // 判断是否该收工：目标货轮消失 / 今日次数用完
     if (r.snap) {
-      const st = wreck.loopStop(r.snap, { colors: W.colors });
+      const st = wreck.loopStop(r.snap, { colors: W.colors, wantRewards: W.wantRewards });
       if (st.stop) {
         pushLog('[货轮] ' + st.text, 'ok');
         W.stopReason = st.reason;
@@ -341,12 +345,12 @@ async function wreckLoopOnce() {
   else { W.nextWake = null; broadcast('wreck', publicWreck()); }
 }
 
-function startWreckAuto() {
+function startWreckAuto(reason) {
   const W = state.wreck;
   if (W.auto) return;
   W.auto = true;
   W.stopReason = '';
-  pushLog('[货轮] 循环出兵开启：修复 → 派出 → 等修复 → 再派出，直到万吨货轮消失', 'ok');
+  pushLog(`[货轮] 循环出兵开启${reason ? '（' + reason + '）' : ''}：修复 → 派出 → 等修复 → 再派出，直到万吨货轮消失`, 'ok');
   broadcast('wreck', publicWreck());
   wreckLoopOnce();
 }
@@ -359,6 +363,68 @@ function stopWreckAuto(reason) {
   if (reason) W.stopReason = W.stopReason || 'manual';
   pushLog('[货轮] 循环出兵已停止' + (reason ? `：${reason}` : ''), 'warn');
   broadcast('wreck', publicWreck());
+}
+
+// ---------- 货轮：整点自动检测 ----------
+// 用户可选：8~22 点每个整点检查一次，若「奖励次数没吃满」且「目标品质里带指定奖励的货轮还在」，
+// 就自动开一次循环出兵（循环本身仍会跑到万吨消失/次数用完才停）。
+function hourlyReset() {
+  const W = state.wreck;
+  if (W.hourlyTimer) { clearTimeout(W.hourlyTimer); W.hourlyTimer = null; }
+  W.hourlyNextAt = 0;
+  if (!W.hourly || !W.hourly.enabled) return;
+  const from = W.hourly.from, to = W.hourly.to;
+  const at = wreck.nextHourlyAt(Math.floor(Date.now() / 1000), from, to);
+  const delay = Math.max(5, at - Math.floor(Date.now() / 1000));
+  W.hourlyNextAt = at;
+  W.hourlyTimer = setTimeout(hourlyTick, delay * 1000);
+  pushLog(`[货轮] 整点检测已开启：${from}:00~${to}:00 每个整点，下次 ${new Date(at * 1000).toLocaleString('zh-CN', { hour12: false })}`, 'info');
+  broadcast('wreck', publicWreck());
+}
+
+async function hourlyTick() {
+  const W = state.wreck;
+  W.hourlyTimer = null;
+  if (!W.hourly || !W.hourly.enabled) { W.hourlyNextAt = 0; broadcast('wreck', publicWreck()); return; }
+
+  const g = guard.canRun();
+  if (!g.ok) {
+    pushLog(`[货轮] 整点检测跳过：${g.text}`, 'info');
+    hourlyReset();
+    return;
+  }
+  if (state.running || W.auto) {
+    pushLog('[货轮] 整点检测跳过：已有循环在跑', 'info');
+    hourlyReset();
+    return;
+  }
+
+  let snap = null;
+  try {
+    state.running = true;
+    snap = await withLock(() => wreck.wreckSnapshot());
+    W.snap = snap;
+  } catch (e) {
+    pushLog(`[货轮] 整点检测读取失败: ${e.message}`, 'error');
+  } finally {
+    state.running = false;
+  }
+
+  if (snap) {
+    const colors = W.colors && W.colors.length ? W.colors : [5, 4, 3];
+    const targets = wreck.pickTargets(snap, { colors, wantRewards: W.wantRewards });
+    const left = snap.rewardLeft;
+    if (left <= 0) {
+      pushLog(`[货轮] 整点检测：今日奖励次数已用完（${snap.todayRewardTimes}/${snap.totalRewardTimes}），不出兵`, 'info');
+    } else if (!targets.length) {
+      pushLog(`[货轮] 整点检测：没有符合条件的目标货轮，不出兵`, 'info');
+    } else {
+      const names = W.wantRewards && W.wantRewards.length ? W.wantRewards.join('/') : '不限奖励';
+      pushLog(`[货轮] 整点检测命中：${targets.length} 条目标（${names}），剩余奖励 ${left} 次，自动出兵`, 'ok');
+      startWreckAuto('整点检测');
+    }
+  }
+  hourlyReset();
 }
 
 // ---------- 联盟情报（手动触发，无常驻循环） ----------
@@ -381,6 +447,9 @@ function publicWreck() {
     dry: W.dry, colors: W.colors, minDuraRatio: W.minDuraRatio,
     doRepair: W.doRepair, doDispatch: W.doDispatch, maxPerWreck: W.maxPerWreck,
     auto: W.auto, minGap: W.minGap, nextWake: W.nextWake, stopReason: W.stopReason,
+    wantRewards: W.wantRewards, hourly: W.hourly,
+    hourlyAt: W.hourlyNextAt || 0,
+    defaultWantRewards: wreck.DEFAULT_WANT_REWARDS,
     running: W.running || false,
     stats: W.stats, last: W.last, snap: W.snap,
     colorNames: wreck.COLOR_NAME, maxDailyReward: wreck.MAX_DAILY_REWARD,
@@ -568,7 +637,7 @@ const server = http.createServer(async (req, res) => {
     // ---- 在线更新（从 GitHub 拉取最新版，只覆盖程序文件）----
     if (p === '/api/version') {
       const v = update.readLocalVersion();
-      return json(res, 200, { ok: true, ...v, repo: update.REPO, branch: update.BRANCH, node: process.version, platform: process.platform, auth: update.tokenSource() });
+      return json(res, 200, { ok: true, ...v, repo: update.REPO, branch: update.BRANCH, node: process.version, platform: process.platform });
     }
 
     if (p === '/api/update/check') {
@@ -656,8 +725,11 @@ const server = http.createServer(async (req, res) => {
         stopAuto();
         pushLog('全局停止：自动循环已关闭', 'warn');
       }
-      if (g.mode === 'stopped' && state.wreck.auto) {
-        stopWreckAuto('全局停止');
+      if (g.mode === 'stopped') {
+        if (state.wreck.auto) stopWreckAuto('全局停止');
+        if (state.wreck.hourlyTimer) { clearTimeout(state.wreck.hourlyTimer); state.wreck.hourlyTimer = null; state.wreck.hourlyNextAt = 0; }
+      } else if (g.mode !== 'stopped' && state.wreck.hourly.enabled && !state.wreck.hourlyTimer) {
+        hourlyReset();
       }
       broadcast('state', publicState());
       return json(res, 200, { ok: true, guard: guard.publicView(), state: publicState() });
@@ -776,7 +848,8 @@ const server = http.createServer(async (req, res) => {
         if (state.running) return json(res, 429, { ok: false, error: '正在执行一轮操作，请稍后' });
         state.running = true; broadcast('state', publicState());
         try {
-          const s = await withLock(() => wreck.wreckSnapshot());
+          const wantRanks = url.searchParams.get('ranks') === '1';
+          const s = await withLock(() => wreck.wreckSnapshot({ ranks: wantRanks, maxRanks: 8 }));
           state.wreck.snap = s;
           if (url.searchParams.get('quiet') !== '1') {
             pushLog(`[货轮] 读取状态：${s.wrecks.length} 条货轮，剩余奖励次数 ${s.rewardLeft}`);
@@ -831,6 +904,18 @@ const server = http.createServer(async (req, res) => {
       if (b.doDispatch !== undefined) W.doDispatch = !!b.doDispatch;
       if (b.maxPerWreck !== undefined) W.maxPerWreck = Math.max(1, Math.min(10, Number(b.maxPerWreck) || 3));
       if (b.minGap !== undefined) W.minGap = Math.max(10, Math.min(1800, Number(b.minGap) || 45));
+      if (b.wantRewards !== undefined) {
+        W.wantRewards = Array.isArray(b.wantRewards)
+          ? b.wantRewards.map((x) => String(x).trim()).filter(Boolean).slice(0, 10)
+          : [];
+      }
+      if (b.hourly !== undefined && b.hourly !== null) {
+        const h = typeof b.hourly === 'object' ? b.hourly : {};
+        if (h.enabled !== undefined) W.hourly.enabled = !!h.enabled;
+        if (h.from !== undefined) W.hourly.from = Math.max(0, Math.min(23, Number(h.from) || 8));
+        if (h.to !== undefined) W.hourly.to = Math.max(0, Math.min(23, Number(h.to) || 22));
+        hourlyReset();
+      }
       if (b.auto !== undefined) { b.auto ? startWreckAuto() : stopWreckAuto('手动停止'); }
       broadcast('wreck', publicWreck());
       return json(res, 200, { ok: true, cfg: publicWreck() });
