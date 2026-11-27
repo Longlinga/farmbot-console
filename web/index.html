@@ -1240,6 +1240,12 @@
         <div id="abNotes" style="font-size:13px;color:var(--dim)">—</div>
       </div>
     </div>
+    <div class="row">
+      <div class="field">
+        <label>仓库鉴权</label>
+        <div id="abAuth" style="font-size:13px;color:var(--dim)">—</div>
+      </div>
+    </div>
     <div class="btns">
       <button class="primary" id="btnCheckUpdate" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>
@@ -1250,6 +1256,7 @@
         立即更新并重启
       </button>
     </div>
+    <div id="abErr" hidden style="margin-top:10px;padding:9px 11px;border-radius:8px;font-size:12.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word;color:#FCA5A5;background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.35)"></div>
     <div class="hint" style="margin-top:10px;font-size:12px;color:var(--dim)">
       更新只覆盖<b>程序文件</b>（js / web / 文档 / version.json），
       <b>不会动</b> <span class="mono">cfg/</span>、<span class="mono">game_src/</span>、<span class="mono">node_modules/</span>、
@@ -2367,9 +2374,25 @@
       $('abNode').textContent = (v.node || '') + (v.platform ? ' · ' + v.platform : '');
       $('abRepo').textContent = (v.repo || '') + ' @ ' + (v.branch || '');
       $('abNotes').textContent = v.notes || '—';
+      renderAuth(v);
     } catch (e) {
       addLog({ t: Date.now(), text: '读取版本失败: ' + e.message, level: 'error' });
     }
+  }
+
+  // 仓库鉴权状态：公有仓库不用 token；私有仓库必须配 token，否则一律 404
+  function renderAuth(v) {
+    const el = $('abAuth');
+    if (!el) return;
+    const src = (v && v.auth) || 'none';
+    const map = {
+      env: ['已配置（环境变量）', 'var(--accent)', '来自 FARMBOT_GH_TOKEN / GH_TOKEN 环境变量'],
+      file: ['已配置（gh_token.txt）', 'var(--accent)', '从程序目录的 gh_token.txt 读取'],
+      none: ['未配置 token', 'var(--dim)', '公有仓库不需要；仓库改成私有后必须配 token'],
+    };
+    const [txt, color, tip] = map[src] || map.none;
+    el.innerHTML = `<span style="color:${color}">${txt}</span>` +
+      `<span style="color:var(--dim)"> · ${tip}</span>`;
   }
 
   async function checkUpdate() {
@@ -2388,8 +2411,12 @@
         $('btnApplyUpdate').disabled = true;
       }
       if (r.notes) $('abNotes').textContent = r.notes;
+      if (r.auth) renderAuth({ auth: r.auth });
+      $('abErr').hidden = true;
     } catch (e) {
       $('abState').innerHTML = '<span style="color:var(--danger)">检查失败</span>';
+      $('abErr').textContent = e.message;
+      $('abErr').hidden = false;
       addLog({ t: Date.now(), text: '检查更新失败: ' + e.message, level: 'error' });
     } finally {
       btn.disabled = false;

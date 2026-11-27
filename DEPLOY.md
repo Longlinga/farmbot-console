@@ -234,6 +234,42 @@ cred.json  buf_login.bin  auth.json  guard.json  logs/  _backup/
 登录凭据、你的三开关设置、日志都保留。覆盖前还会把旧文件备份到
 `_backup/<时间戳>/`，新版有问题可以直接拷回去。
 
+### 仓库改成私有仓库后怎么继续在线更新
+
+**可以，只要给服务器配一个 token。** GitHub 对私有仓库的匿名请求一律返回 `404`
+（不是 401，容易误判成「仓库地址写错了」），所以必须带凭据。
+
+1. 在 GitHub 上建一个**只读**细粒度 token（Fine-grained token）：
+   Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token
+
+   - **Repository access**：Only select repositories → 选你的这个仓库（如 `Longlinga/farmbot-console`）
+   - **Permissions → Repository permissions → Contents**：`Read-only`
+   - 其余权限全部留空（这样即使 token 泄漏，也只能读你的代码，不能改、不能碰别的仓库）
+
+2. 把 token 值写进服务器上程序目录的 `gh_token.txt`（一行，不要有别的字符）：
+
+   ```bash
+   cd /opt/farmbot-console
+   echo 'github_pat_xxxxxxxxxxxxxxxxx' > gh_token.txt
+   chmod 600 gh_token.txt
+   ```
+
+3. 打开 **关于** 页签，「仓库鉴权」应显示 **已配置（gh_token.txt）**；点「检查更新」即可。
+
+也可以不写文件，改用环境变量（systemd 装的要改 unit 或用 `EnvironmentFile`）：
+
+```bash
+FARMBOT_GH_TOKEN=github_pat_xxx ./start.sh
+```
+
+> **token 不会被更新覆盖，也不会被推上 GitHub**：`gh_token.txt` 已加入更新白名单的
+> `DENY` 列表和 `.gitignore`，`/api/version`、`/api/update/check` 只回报「来自文件 / 环境变量 /
+> 未配置」，不会把 token 本身返回给前端或写进日志。
+> token 也只会发给 `api.github.com`、`codeload.github.com` 等 GitHub 域名，不会随重定向泄露给第三方主机。
+
+看到「仓库鉴权：未配置 token」却又点了检查更新，会直接提示
+`仓库是私有的话必须配 token`，不会静默失败。
+
 ### 方式 B：命令行
 
 ```bash

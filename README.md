@@ -240,6 +240,13 @@ node update.js apply    # 下载并覆盖程序文件
 > `update.js` 会先查远端版本号，下载后再校验包内 `version.json`，
 > 对不上就换下载源重试，不会把旧代码写回去。
 
+**仓库改成私有后**：在线更新仍然可用，但要给服务器配一个 token，因为 GitHub 对私有仓库的
+匿名请求一律返回 `404`。建一个只读的细粒度 token（Repository permissions → Contents: **Read-only**），
+写进程序目录的 `gh_token.txt`（`chmod 600`）即可；也可以改用环境变量 `FARMBOT_GH_TOKEN`。
+「关于」页签的「仓库鉴权」会显示 token 来自哪里。`gh_token.txt` 在 `DENY` 白名单和 `.gitignore`
+里，更新不会覆盖它、也不会被推上 GitHub；token 只发给 GitHub 域名，不随重定向外泄。
+详见 `DEPLOY.md` 的「仓库改成私有仓库后怎么继续在线更新」。
+
 ### 网页控制台能做什么
 
 - 8 块田的实时状态：进度环 + 倒计时 + 作物 + 周期（周期取自服务器实际的 `ripeTime - plantTime`，含账号加速）

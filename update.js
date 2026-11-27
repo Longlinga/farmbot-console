@@ -13,6 +13,41 @@ const REPO = process.env.FARMBOT_REPO || 'Longlinga/farmbot-console';
 const BRANCH = process.env.FARMBOT_BRANCH || 'main';
 const REQUEST_TIMEOUT = 20000;
 
+// ---- 私有仓库支持 ----
+// 公有仓库不需要 token；私有仓库必须带 token（GitHub 对私有仓库的匿名请求一律回 404）。
+// token 来源优先级：环境变量 FARMBOT_GH_TOKEN > GH_TOKEN > 同目录 gh_token.txt
+// gh_token.txt 已加进 .gitignore 与 DENY 清单，不会被在线更新覆盖，也不会被推上 GitHub。
+const TOKEN_FILE = path.join(ROOT, 'gh_token.txt');
+
+function getToken() {
+  const env = (process.env.FARMBOT_GH_TOKEN || process.env.GH_TOKEN || process.env.GITHUB_TOKEN || '').trim();
+  if (env) return env;
+  try {
+    if (fs.existsSync(TOKEN_FILE)) return fs.readFileSync(TOKEN_FILE, 'utf8').trim();
+  } catch (e) {}
+  return '';
+}
+
+function tokenSource() {
+  const env = (process.env.FARMBOT_GH_TOKEN || process.env.GH_TOKEN || process.env.GITHUB_TOKEN || '').trim();
+  if (env) return 'env';
+  try {
+    if (fs.existsSync(TOKEN_FILE) && fs.readFileSync(TOKEN_FILE, 'utf8').trim()) return 'file';
+  } catch (e) {}
+  return 'none';
+}
+
+// 只给 GitHub 的域名带 token，别把凭据发给跳转到的第三方主机
+function authHeadersFor(url) {
+  let host = '';
+  try { host = new URL(url).hostname; } catch (e) { return {}; }
+  const ok = host === 'api.github.com' || host === 'codeload.github.com'
+    || host === 'raw.githubusercontent.com' || host === 'github.com' || host === 'objects.githubusercontent.com';
+  if (!ok) return {};
+  const t = getToken();
+  return t ? { authorization: 'Bearer ' + t } : {};
+}
+
 // 允许被更新覆盖的文件（相对路径）。注意：/ 结尾表示目录（整个目录下的文件都允许）
 const ALLOW = [
   'server.js', 'client.js', 'farm_core.js', 'radar_core.js', 'wreck_core.js',
@@ -26,7 +61,7 @@ const ALLOW = [
 
 // 永远不覆盖的文件（防呆：即使白名单写错也拦住）
 const DENY = [
-  'auth.json', 'guard.json', 'cred.json', 'buf_login.bin',
+  'auth.json', 'guard.json', 'cred.json', 'buf_login.bin', 'gh_token.txt',
   'cfg/', 'game_src/', 'node_modules/', 'logs/', '_backup/', '.git/',
 ];
 
@@ -54,7 +89,7 @@ function httpsGet(url, redirects = 0, extraHeaders = {}) {
   return new Promise((resolve, reject) => {
     if (redirects > 5) return reject(new Error('重定向太多次'));
     const req = https.get(url, {
-      headers: Object.assign({ 'user-agent': 'farmbot-console-updater', accept: '*/*' }, extraHeaders),
+      headers: Object.assign({ 'user-agent': 'farmbot-console-updater', accept: '*/*' }, authHeadersFor(url), extraHeaders),
       timeout: REQUEST_TIMEOUT,
     }, (res) => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
@@ -64,6 +99,12 @@ function httpsGet(url, redirects = 0, extraHeaders = {}) {
       }
       if (res.statusCode !== 200) {
         res.resume();
+        if (res.statusCode === 404) {
+          return reject(new Error(`HTTP 404 ${url}\n  仓库是私有的话必须配 token：把 GitHub token 写进 gh_token.txt，或设环境变量 FARMBOT_GH_TOKEN`));
+        }
+        if (res.statusCode === 401 || res.statusCode === 403) {
+          return reject(new Error(`HTTP ${res.statusCode} ${url}\n  token 无效或没有 repo 权限，请检查 gh_token.txt`));
+        }
         return reject(new Error(`HTTP ${res.statusCode} ${url}`));
       }
       const chunks = [];
@@ -90,6 +131,7 @@ async function checkUpdate() {
     hasUpdate,
     notes: String(remote.notes || ''),
     releasedAt: remote.releasedAt || '',
+    auth: tokenSource(),
   };
 }
 
@@ -285,4 +327,5 @@ if (require.main === module) {
 module.exports = {
   checkUpdate, applyUpdate, requestRestart,
   readLocalVersion, parseTar, isAllowed, ROOT, REPO, BRANCH, ALLOW, DENY,
+  getToken, tokenSource, TOKEN_FILE,
 };

@@ -568,7 +568,7 @@ const server = http.createServer(async (req, res) => {
     // ---- 在线更新（从 GitHub 拉取最新版，只覆盖程序文件）----
     if (p === '/api/version') {
       const v = update.readLocalVersion();
-      return json(res, 200, { ok: true, ...v, repo: update.REPO, branch: update.BRANCH, node: process.version, platform: process.platform });
+      return json(res, 200, { ok: true, ...v, repo: update.REPO, branch: update.BRANCH, node: process.version, platform: process.platform, auth: update.tokenSource() });
     }
 
     if (p === '/api/update/check') {

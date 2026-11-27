@@ -7,3 +7,4 @@ buf_login.bin
 _backup/
 .DS_Store
 _push.js
+gh_token.txt
